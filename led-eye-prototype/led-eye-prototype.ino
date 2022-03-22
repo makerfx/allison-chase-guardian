@@ -14,10 +14,6 @@ Metro eyeMetro = Metro(EYE_SPEED);
 //DON'T DO IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-//TODO - support 8 rings
-
-//todo: animation 2 - "target lock" - red starts from outside, goes in, locks in center, for a bit, then goes solid red.
-
 
 #define EYE_PATTERN_LEN 12
 #define NUM_RINGS 8

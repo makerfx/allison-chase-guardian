@@ -27,7 +27,8 @@ Metro trMetro = Metro(30); //just gets it started, then topRingSpeed is used.
 boolean neckTopPattern[NUM_NECK_LEDS_PER_RING];
 
 CRGB neckLEDs[NUM_NECK_LEDS];
-#define NECK_DATA_PIN 17 //left connector
+#define NECK_DATA_PIN 29 
+//17 = left; 29 = third from left 24 = right;
 int topRingOffset=0; //top ring offset
 int topRingTarget=50; // top ring target
 int topRingSpeed=1; //top ring speed
