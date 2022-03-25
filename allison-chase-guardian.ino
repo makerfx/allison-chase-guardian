@@ -2,6 +2,21 @@
 #define USE_WS2812SERIAL
 #include <FastLED.h>
 #include <Metro.h>
+#include "OSUKeyboard.h"
+
+/*
+ * USB Setup including OSU keyboard
+ */
+USBHost myusb;
+USBHub hub1(myusb);
+
+USBHIDParser hid1(myusb);
+
+OSUKeyboard osukey1(myusb);
+
+USBDriver *drivers[] = {&hub1, &hid1};
+USBHIDInput *hiddrivers[] = {&osukey1};
+
 
 bool debugOptions[10] = {0, 0, 0, 1, 0, 0, 0, 0, 0, 0};   //change default here, helpful for startup debugging
 
@@ -147,6 +162,11 @@ void setup() {
   Serial.begin(115200);
   delay(200);
 
+  //usb setup
+  osukey1.attachRawPress(OnPress);
+  osukey1.attachRawRelease(OnRelease);
+  myusb.begin();
+  
   //display init
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
@@ -516,4 +536,46 @@ void printDebugOptions() {
     }
   }
   Serial.println("\n");       //a little extra padding in the output
+}
+
+//usb keyboard button press
+void OnPress(uint8_t key)
+{
+  //Serial.print("Key Pressed:  "); Serial.println(key, HEX);
+}
+
+//usb keyboard button release
+void OnRelease(uint8_t key)
+{
+  if (key==1) modePowerUp();
+  else if (key==2) modeAttack();
+  else if (key==3) modeDamaged();
+  else if (key==4) modeDestroyed();
+  else if (key==5) toggleMute();
+  //Serial.print("Key Released: "); Serial.println(key, HEX);
+}
+
+void modePowerUp() {
+  Serial.println("PowerUp!");
+}
+
+void modeAttack() {
+  Serial.println("Attack!");
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.println("Attack!");
+  display.display(); // actually display all of the above
+  eyeAniMode = 1;
+}
+
+void modeDamaged() {
+  Serial.println("Ow! Got Hit!");
+}
+
+void modeDestroyed() {
+  Serial.println("I see dead people!");
+}
+
+void toggleMute() {
+  Serial.println("Mute!");
 }
