@@ -5,6 +5,65 @@
 #include "OSUKeyboard.h"
 
 /*
+ * Audio System Includes & Globals
+ * Reference the Audio Design Tool - https://www.pjrc.com/teensy/gui/index.html
+ * 
+ */
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
+
+// GUItool: begin automatically generated code
+AudioPlaySdWav           playSdWav2;     //xy=328.00390625,393.99999809265137
+AudioPlaySdWav           playSdWav1;     //xy=330.00390625,334.99999809265137
+AudioPlaySdWav           playSdWav3;     //xy=330.00390625,452.99999809265137
+AudioMixer4              mixer2;         //xy=536.0039176940918,488.9999990463257
+AudioMixer4              mixer1;         //xy=540.0039253234863,313.00000953674316
+AudioOutputI2S           i2s1;           //xy=712.0039176940918,389.00001335144043
+AudioConnection          patchCord1(playSdWav2, 0, mixer1, 1);
+AudioConnection          patchCord2(playSdWav2, 1, mixer2, 1);
+AudioConnection          patchCord3(playSdWav1, 0, mixer1, 0);
+AudioConnection          patchCord4(playSdWav1, 1, mixer2, 0);
+AudioConnection          patchCord5(playSdWav3, 0, mixer1, 2);
+AudioConnection          patchCord6(playSdWav3, 1, mixer2, 2);
+AudioConnection          patchCord7(mixer2, 0, i2s1, 1);
+AudioConnection          patchCord8(mixer1, 0, i2s1, 0);
+AudioControlSGTL5000     sgtl5000_1;     //xy=271.00390625,256.99999809265137
+// GUItool: end automatically generated code
+
+
+#define NUM_CHANNELS       3     //SD Card playback is best to not exceed 3 simultaneous WAVs
+                                 //There is an SD card test in the Audio examples
+
+#define CHANNEL_MUSIC      0     //Only one item can play per channel
+#define CHANNEL_SFX1       1     //Use these to map sound types to a channel
+#define CHANNEL_SFX2       2     
+
+#define LEVEL_CHANNEL0    .5    //change these for relative channel levels
+#define LEVEL_CHANNEL1    .5
+#define LEVEL_CHANNEL2    .5 
+
+#define STARTING_VOLUME       .8 //change this to reduce clipping in the main amp
+#define MAX_VOLUME            1.0 
+#define MIN_VOLUME            .2 
+#define VOLUME_INCREMENT      .1 //how much the volume changes when using buttons
+
+//I use this syntax so that I can leave the declarations above which come from the Audio Design tool
+AudioPlaySdWav *channels[NUM_CHANNELS] = { &playSdWav1, &playSdWav2, &playSdWav3 };
+String playQueue[NUM_CHANNELS];
+
+float mainVolume = STARTING_VOLUME;
+bool musicLoop = 0;
+bool firstLoop = 1;
+
+// Use these with the Teensy 3.5 & 3.6 SD card
+#define SDCARD_CS_PIN    BUILTIN_SDCARD
+#define SDCARD_MOSI_PIN  11  // not actually used
+#define SDCARD_SCK_PIN   13  // not actually used
+
+/*
  * USB Setup including OSU keyboard
  */
 USBHost myusb;
@@ -18,7 +77,7 @@ USBDriver *drivers[] = {&hub1, &hid1};
 USBHIDInput *hiddrivers[] = {&osukey1};
 
 
-bool debugOptions[10] = {0, 0, 0, 1, 0, 0, 0, 0, 0, 0};   //change default here, helpful for startup debugging
+bool debugOptions[10] = {0, 0, 1, 1, 0, 0, 0, 0, 0, 0};   //change default here, helpful for startup debugging
 
                                                         
 const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animation",
@@ -70,6 +129,7 @@ const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animati
 Metro eyeMetro = Metro(EYE_SPEED);
 Metro trMetro = Metro(TOP_RING_SPEED_MAX);      //prime the metros
 Metro brMetro = Metro(BOTTOM_RING_SPEED_MAX);
+Metro playQueueMetro = Metro(50);
 
 boolean neckTopPattern[NUM_NECK_LEDS_PER_RING];
 
@@ -192,6 +252,28 @@ void setup() {
 
   Serial.println("Setup Started.");
 
+    //setup audio system
+  AudioMemory(128);
+  sgtl5000_1.enable();
+  sgtl5000_1.volume(mainVolume);
+
+  //set relative volumes by channel
+  mixer1.gain(0, LEVEL_CHANNEL0);
+  mixer2.gain(0, LEVEL_CHANNEL0);
+  mixer1.gain(1, LEVEL_CHANNEL1);
+  mixer2.gain(1, LEVEL_CHANNEL1);
+  mixer1.gain(2, LEVEL_CHANNEL2);
+  mixer2.gain(2, LEVEL_CHANNEL2);
+
+  //setup SD card
+  SPI.setMOSI(SDCARD_MOSI_PIN);
+  SPI.setSCK(SDCARD_SCK_PIN);
+  if (!(SD.begin(SDCARD_CS_PIN))) {
+    while (1) {
+      Serial.println("Unable to access the SD card");
+      delay(500);
+    }
+  }
   
   LEDS.addLeds<WS2812SERIAL,  NECK_DATA_PIN,   BRG>(neckLEDs,  NUM_NECK_LEDS);
   LEDS.addLeds<WS2812SERIAL,  EYE_DATA_PIN,   BRG>(eyeLEDs,   EYE_NUM_LEDS);
@@ -214,6 +296,8 @@ void setup() {
     Serial.println("");  
   }
 
+
+
   delay (2000);
   display.clearDisplay();
   display.setCursor(0,0);
@@ -222,11 +306,36 @@ void setup() {
   display.display(); // actually display all of the above
   printDebugOptions();
 
+  //modePowerUp();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+ 
+   if (playQueueMetro.check() == 1) { // check if theb metro has passed its interval
+ 
+    bool block = false;
+    //play any queued music
+    for (int q = 0; q < NUM_CHANNELS; q++) {
+      String fn = playQueue[q];
+      if (fn.length() >0) {
+        playQueue[q] = "";
+        playWAV(q,fn); 
+        block = true;
+      }
+    }
 
+    //loop BGM if needed
+    if ( !block && (musicLoop==true) && !(channels[CHANNEL_MUSIC]->isPlaying())) {
+      if(debugOptions[DEBUG_AUDIO]) Serial.println("Audio: restarting music loop");
+      playWAV(CHANNEL_MUSIC, "ACGBATL2.WAV");
+      //if (firstLoop) {
+      //  playWAV(CHANNEL_SFX1, "ACGBOOT.WAV");
+      //  firstLoop=0;
+      //}
+      
+    }
+  } //end playQueueMetro check
+  
   if (brMetro.check() == 1) { // check if the bottom ring metro has passed its interval 
 
     if (bottomRingOffset == 0) bottomRingTargetCycles--;
@@ -391,9 +500,9 @@ void loop() {
     }e
     Serial.println("");
    */
-   
-   if (eyeAniMode == 0) updateEyeRingStatus();
-   else if (eyeAniMode == 1) updateEyeTargeting();
+   if (eyeAniMode == 0) fadeToBlackBy(eyeLEDs, EYE_NUM_LEDS, 80);
+   else if (eyeAniMode == 1) updateEyeRingStatus();
+   else if (eyeAniMode == 2) updateEyeTargeting();
     
    FastLED.show();
    debugOptionsCheck(); 
@@ -425,13 +534,13 @@ void updateEyeTargeting() {
     
     if (eyeTargetAniFrame == EYE_TARGET_ANI_FRAMES) {
       fadeToBlackBy(eyeLEDs, EYE_NUM_LEDS, 80);
-      eyeAniMode = 0;
+      eyeAniMode = 1;
       eyeTargetAniFrame = 0;
       eyeMetro.interval(EYE_SPEED);
     } //end if
   } //end for
 
-  if (eyeAniMode == 1) eyeTargetAniFrame++;
+  if (eyeAniMode == 2) eyeTargetAniFrame++;
 }
 
 void updateEyeRingStatus() {
@@ -501,17 +610,18 @@ void debugOptionsCheck() {
             option = incomingByte - '0';
             debugOptions[option] = !debugOptions[option]; 
             //Serial.printf("Debug option %d is now %s\n", option, debugOptions[option]?"ON":"OFF");
+            printDebugOptions();
             break;
-          
-          
-          case 'q': break;
-          case 'w': break;
-          case 'e': break;
-          case 'r': eyeAniMode = 1; break;
-          
+   
+          case 'q': OnRelease(1); break;
+          case 'w': OnRelease(2); break;
+          case 'e': OnRelease(3); break;
+          case 'r': OnRelease(4); break;
+          case 't': OnRelease(5); break;
+          case 'y': OnRelease(6); break;
           }
          
-         printDebugOptions();
+     
           
       }
        
@@ -551,12 +661,19 @@ void OnRelease(uint8_t key)
   else if (key==2) modeAttack();
   else if (key==3) modeDamaged();
   else if (key==4) modeDestroyed();
-  else if (key==5) toggleMute();
+  else if (key==5) volumeUp();
+  else if (key==6) volumeDown();
   //Serial.print("Key Released: "); Serial.println(key, HEX);
 }
 
 void modePowerUp() {
   Serial.println("PowerUp!");
+  musicLoop=true;
+  //firstLoop=true;
+  queueWAV(CHANNEL_SFX1, "ACGBOOT.WAV");
+  queueWAV(CHANNEL_MUSIC, "ACGBATL1.WAV");
+  eyeAniMode = 1;
+  
 }
 
 void modeAttack() {
@@ -565,7 +682,7 @@ void modeAttack() {
   display.setCursor(0,0);
   display.println("Attack!");
   display.display(); // actually display all of the above
-  eyeAniMode = 1;
+  eyeAniMode = 2;
 }
 
 void modeDamaged() {
@@ -574,8 +691,84 @@ void modeDamaged() {
 
 void modeDestroyed() {
   Serial.println("I see dead people!");
+  musicLoop = false;
+  queueWAV(CHANNEL_MUSIC, "ACGBATL3.WAV");
+  eyeAniMode=0;
 }
+
+
 
 void toggleMute() {
   Serial.println("Mute!");
+}
+
+/*
+ * Audio Playback 
+ * queueWAV() - this is needed because we can't start audio files
+ *              during the USB interrupt that generates key messages
+ *              We add the file to a channel queue (currently only one deep)
+ *              and there is a queue metro that will check for it and play it
+ * 
+ */
+
+void queueWAV (int channel, String fn) {
+  if (channel < NUM_CHANNELS) {
+    playQueue[channel] = fn;
+  if (debugOptions[DEBUG_AUDIO]) Serial.printf ("queueWAV(%i, %s)\n", channel, fn.c_str());
+  
+  }
+}
+
+/*
+ * Audio Playback
+ * playWAV() - this plays a specific wav file from SD card
+ *             DO NOT CALL THIS FROM WITHIN A USB EVENT HANDLER, 
+ *             USE queueWAV instead!
+ */
+
+void playWAV (int channel, String fn) {
+
+  if (debugOptions[DEBUG_AUDIO]) Serial.printf("playWAV(%i, %s)\n", channel, fn.c_str());
+
+  channels[channel]->play(fn.c_str());
+
+
+} //end playWAV
+
+/*
+ * volumeUp() - increase system volume
+ * 
+ */
+void volumeUp() 
+{
+  mainVolume += VOLUME_INCREMENT;
+  updateVolume();
+}
+
+/*
+ * volumeDown() - decrease system volume
+ * 
+ */
+void volumeDown() 
+{
+  mainVolume -= VOLUME_INCREMENT;
+  updateVolume();
+}
+
+/*
+ * audio
+ * updateVolume() -  checks min / max vol levels and updates the audio system volume
+ *  
+ */
+void updateVolume() {
+
+  if (mainVolume < MIN_VOLUME) mainVolume = MIN_VOLUME;
+  else if (mainVolume > MAX_VOLUME) mainVolume = MAX_VOLUME;
+ 
+  sgtl5000_1.volume(mainVolume);
+    if (debugOptions[DEBUG_AUDIO]) {
+    Serial.print("System volume now: ");
+    Serial.println(mainVolume);
+  }
+  
 }
