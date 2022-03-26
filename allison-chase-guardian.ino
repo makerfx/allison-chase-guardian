@@ -4,6 +4,8 @@
 #include <Metro.h>
 #include "OSUKeyboard.h"
 
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
 /*
  * Audio System Includes & Globals
  * Reference the Audio Design Tool - https://www.pjrc.com/teensy/gui/index.html
@@ -54,6 +56,17 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=271.00390625,256.99999809265137
 AudioPlaySdWav *channels[NUM_CHANNELS] = { &playSdWav1, &playSdWav2, &playSdWav3 };
 String playQueue[NUM_CHANNELS];
 
+#define NUM_ACTIONS 4
+
+#define ACTION_FADE_OUT_EYE        0
+#define ACTION_FADE_OUT_NECK       1
+#define ACTION_FADE_OUT_BODY       2
+#define ACTION_PLAY_LAZER_SOUND    3
+
+
+unsigned long actionQueue[NUM_ACTIONS];
+const char *actionsText[NUM_ACTIONS]={"Fade Out Eye", "Fade Out Neck", "Fade Out Body"}; 
+
 float mainVolume = STARTING_VOLUME;
 bool musicLoop = 0;
 bool firstLoop = 1;
@@ -77,7 +90,7 @@ USBDriver *drivers[] = {&hub1, &hid1};
 USBHIDInput *hiddrivers[] = {&osukey1};
 
 
-bool debugOptions[10] = {0, 0, 1, 1, 0, 0, 0, 0, 0, 0};   //change default here, helpful for startup debugging
+bool debugOptions[10] = {0, 1, 1, 1, 1, 1, 1, 0, 0, 0};   //change default here, helpful for startup debugging
 
                                                         
 const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animation",
@@ -129,7 +142,7 @@ const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animati
 Metro eyeMetro = Metro(EYE_SPEED);
 Metro trMetro = Metro(TOP_RING_SPEED_MAX);      //prime the metros
 Metro brMetro = Metro(BOTTOM_RING_SPEED_MAX);
-Metro playQueueMetro = Metro(50);
+Metro queueMetro = Metro(50);
 
 boolean neckTopPattern[NUM_NECK_LEDS_PER_RING];
 
@@ -180,7 +193,10 @@ boolean eyeTargetAniFrames[EYE_TARGET_ANI_FRAMES][8] = {
                                                     };
 
 
-int eyeAniMode = 0;
+uint8_t eyeAniMode = 0;
+uint8_t neckAniMode = 0;
+uint8_t bodyAniMode = 0;
+
 int eyeTargetAniFrame = 0;
 
 
@@ -238,16 +254,15 @@ void setup() {
   // Clear the buffer
   display.clearDisplay();
 
-    // text display tests
+  // text display tests
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0,0);
-  display.println("Allison Chase's");
-  display.println("Decayed Guardian");
-  display.println("Cosplay");
-  display.println("...Initializing...");
-  
-  display.setCursor(0,0);
+  display.println(__FILENAME__);
+  display.print(__DATE__);
+  display.print(" ");
+  display.println(__TIME__);
+  display.println("Initializing...");
   display.display(); // actually display all of the above
 
   Serial.println("Setup Started.");
@@ -310,9 +325,33 @@ void setup() {
 }
 
 void loop() {
- 
-   if (playQueueMetro.check() == 1) { // check if theb metro has passed its interval
- 
+
+  EVERY_N_MILLISECONDS(10) {                           
+    FastLED.show();
+  }
+  
+  EVERY_N_MILLISECONDS(100) {                           
+    updateOLED();
+    FastLED.show();
+    debugOptionsCheck();
+  }
+   
+   if (queueMetro.check() == 1) { //time to process the queues
+
+    for (int q = 0; q < NUM_ACTIONS; q++) {
+      unsigned long qTime = actionQueue[q];
+      if (qTime && (millis() > qTime)) {
+        if (debugOptions[DEBUG_ACTION]) Serial.printf ("Action Called: %s \n", actionsText[q]);
+        if (q==ACTION_FADE_OUT_EYE) eyeAniMode = 0;
+        else if (q==ACTION_FADE_OUT_NECK) neckAniMode = 0;
+        else if (q==ACTION_FADE_OUT_BODY) bodyAniMode = 0;
+        else if (q==ACTION_PLAY_LAZER_SOUND) playWAV(CHANNEL_SFX1, "ACGLAZR1.WAV");
+        actionQueue[q]=0;
+      }
+    }
+    
+  
+
     bool block = false;
     //play any queued music
     for (int q = 0; q < NUM_CHANNELS; q++) {
@@ -328,119 +367,43 @@ void loop() {
     if ( !block && (musicLoop==true) && !(channels[CHANNEL_MUSIC]->isPlaying())) {
       if(debugOptions[DEBUG_AUDIO]) Serial.println("Audio: restarting music loop");
       playWAV(CHANNEL_MUSIC, "ACGBATL2.WAV");
-      //if (firstLoop) {
-      //  playWAV(CHANNEL_SFX1, "ACGBOOT.WAV");
-      //  firstLoop=0;
-      //}
-      
     }
   } //end playQueueMetro check
   
   if (brMetro.check() == 1) { // check if the bottom ring metro has passed its interval 
-
-    if (bottomRingOffset == 0) bottomRingTargetCycles--;
-    if (bottomRingTargetCycles < 0) bottomRingTargetCycles = 0;
-  
-    if ((bottomRingOffset == bottomRingTarget) && (bottomRingTargetCycles ==0)) {
-      bottomRingDir = !bottomRingDir;
-      bottomRingTarget = random(0, BOTTOM_RING_GEAR_SIZE);
-      bottomRingTargetCycles = random(0, BOTTOM_RING_MAX_CYCLES);
-      
-      if (random(1,20) >= BOTTOM_RING_SPEED_RANDOM_CHECK_TURN) {
-          bottomRingSpeed = random(BOTTOM_RING_SPEED_MIN,BOTTOM_RING_SPEED_MAX);
-      }
-      brMetro.interval(bottomRingSpeed);
-      //Serial.print("reverse - new target = "); Serial.println(bottomRingTarget);
-    }
-  
-    //decel math
-    int dist = abs(bottomRingOffset-bottomRingTarget);
-    
-    if (dist < BOTTOM_RING_DECEL_DISTANCE) {
-      int temp_bottomRingSpeed = bottomRingSpeed * (BOTTOM_RING_DECEL_FACTOR/dist);
-      if (temp_bottomRingSpeed > BOTTOM_RING_SPEED_MAX_DECEL) {
-        temp_bottomRingSpeed = BOTTOM_RING_SPEED_MAX_DECEL;
-        brMetro.interval(temp_bottomRingSpeed);
-      }
-      else {
-        //random speed changes
-        if (random(1,20) >= BOTTOM_RING_SPEED_RANDOM_CHECK) {
-          bottomRingSpeed = random(BOTTOM_RING_SPEED_MIN,BOTTOM_RING_SPEED_MAX);
-        }
-        brMetro.interval(bottomRingSpeed);
-      }
-    }
-    
-    if (bottomRingDir) bottomRingOffset++;
-    else bottomRingOffset --;
-  
-    if (bottomRingOffset >= BOTTOM_RING_GEAR_SIZE ) bottomRingOffset = 0;
-    if (bottomRingOffset < 0) bottomRingOffset = BOTTOM_RING_GEAR_SIZE-1;
-    
-    if (debugOptions[DEBUG_ANIMATION_NECK]) {
-      Serial.println(""); //Serial.print(bottomRingOffset);Serial.println("->");
-    }
-
-    bool tempLEDs[3][NUM_NECK_LEDS_PER_RING];
-
-    //init the array with zeros.... NEEDED?
-    for (int r = 0; r<3; r++) {
-      for (int l = 0; l<NUM_NECK_LEDS_PER_RING; l++) {
-        tempLEDs[r][l]=0; //clear 
-      }
-    }
-   
-    
-    for (int r = 0; r<NUM_NECK_RINGS-1; r++) {                                                          //for each ring
-      int curLED = 0;
-      for (int g = 0; g<NUM_NECK_LEDS_PER_RING / (BOTTOM_RING_GEAR_SIZE) ; g++) {                // for each gear
-
-        if (g%2==0) { //even number
-                                                                    
-            for (int l=0; l<BOTTOM_RING_GEAR_SIZE; l++) {
-              int lo =  BOTTOM_RING_GEAR_SIZE - bottomRingOffset + l;
-              if (lo > BOTTOM_RING_GEAR_SIZE -1) lo= lo- BOTTOM_RING_GEAR_SIZE;
-              //Serial.print(lo);Serial.print(" ");
-              tempLEDs[r][curLED] = neckFacet[r][lo];         //map facet pattern 
-              curLED++;  
-            } //end for l
-            //Serial.println("");
-
-            
-       
-       }
-       else { //odd number
-           int gearEnd = curLED - 1 ; //last LED of prior gear       
-   
-           for (int l=0; l<BOTTOM_RING_GEAR_SIZE; l++) {                                         
-            tempLEDs[r][curLED] = tempLEDs[r][gearEnd - l];
-            curLED++;
-            } //end for l
-        }
-
-        
-        //Serial.print(" ");
-        } //end for l
-    } //end for r 
-   
-  
-    if (debugOptions[DEBUG_ANIMATION_NECK]) {
-      for (int r = 0; r<NUM_NECK_RINGS-1; r++) { //for each ring
-  
-        Serial.print(r); Serial.print(": ");
-        for (int l = 0; l<NUM_NECK_LEDS_PER_RING; l++) {
-          if (tempLEDs[r][l] == 1) Serial.print("#");
-          else Serial.print(" ");
-          tempLEDs[r][l]=0;                                               //clear is this needed?
-        }
-        Serial.println("");
-      }
-    }  
+    if (neckAniMode == 0) fadeToBlackBy(neckLEDs+NUM_NECK_LEDS_PER_RING, NUM_NECK_LEDS_PER_RING*(NUM_NECK_RINGS-1), 60);
+    else if (neckAniMode == 1) updateNeckBottomRings();
     
   }
 
   if (trMetro.check() == 1) { // check if the top ring metro has passed its interval 
+     if (neckAniMode == 0) fadeToBlackBy(neckLEDs, NUM_NECK_LEDS_PER_RING, 60); //just the top ring
+     else if (neckAniMode == 1) updateNeckTopRing();
+   
+ 
+  } //end trMetro 
+   
+  if (eyeMetro.check() == 1) { // check if the metopRingOffset has passed its interval 
+  
+    /*for (int i = 0; i<EYE_PATTERN_LEN; i++) {
+      Serial.print(eyeRingStatus[i]);
+      Serial.print(" ");
+    }e
+    Serial.println("");
+   */
+   if (eyeAniMode == 0) fadeToBlackBy(eyeLEDs, EYE_NUM_LEDS, 60);
+   else if (eyeAniMode == 1) updateEyeRingStatus();
+   else if (eyeAniMode == 2) updateEyeTargeting();
+    
 
+   
+  }  //end eyeMetro 
+  
+  
+}
+
+void updateNeckTopRing() {
+  
     if (topRingOffset == topRingTarget) {
       topRingDir = !topRingDir;
       topRingTarget = random(0, NUM_NECK_LEDS_PER_RING);
@@ -486,30 +449,121 @@ void loop() {
        if (neckTopPattern[lo]) neckLEDs[i] = CRGB::Blue; 
        else neckLEDs[i] = CRGB::Black;
     }  
+}
+void updateNeckBottomRings() {
+  if (bottomRingOffset == 0) bottomRingTargetCycles--;
+    if (bottomRingTargetCycles < 0) bottomRingTargetCycles = 0;
   
+    if ((bottomRingOffset == bottomRingTarget) && (bottomRingTargetCycles ==0)) {
+      bottomRingDir = !bottomRingDir;
+      bottomRingTarget = random(0, BOTTOM_RING_GEAR_SIZE);
+      bottomRingTargetCycles = random(0, BOTTOM_RING_MAX_CYCLES);
+      
+      if (random(1,20) >= BOTTOM_RING_SPEED_RANDOM_CHECK_TURN) {
+          bottomRingSpeed = random(BOTTOM_RING_SPEED_MIN,BOTTOM_RING_SPEED_MAX);
+      }
+      brMetro.interval(bottomRingSpeed);
+      //Serial.print("reverse - new target = "); Serial.println(bottomRingTarget);
+    }
   
-    FastLED.show();
-    debugOptionsCheck();
-  } //end trMetro 
-   
-  if (eyeMetro.check() == 1) { // check if the metopRingOffset has passed its interval 
-  
-    /*for (int i = 0; i<EYE_PATTERN_LEN; i++) {
-      Serial.print(eyeRingStatus[i]);
-      Serial.print(" ");
-    }e
-    Serial.println("");
-   */
-   if (eyeAniMode == 0) fadeToBlackBy(eyeLEDs, EYE_NUM_LEDS, 80);
-   else if (eyeAniMode == 1) updateEyeRingStatus();
-   else if (eyeAniMode == 2) updateEyeTargeting();
+    //decel math
+    int dist = abs(bottomRingOffset-bottomRingTarget);
     
-   FastLED.show();
-   debugOptionsCheck(); 
+    if (dist < BOTTOM_RING_DECEL_DISTANCE) {
+      int temp_bottomRingSpeed = bottomRingSpeed * (BOTTOM_RING_DECEL_FACTOR/dist);
+      if (temp_bottomRingSpeed > BOTTOM_RING_SPEED_MAX_DECEL) {
+        temp_bottomRingSpeed = BOTTOM_RING_SPEED_MAX_DECEL;
+        brMetro.interval(temp_bottomRingSpeed);
+      }
+      else {
+        //random speed changes
+        if (random(1,20) >= BOTTOM_RING_SPEED_RANDOM_CHECK) {
+          bottomRingSpeed = random(BOTTOM_RING_SPEED_MIN,BOTTOM_RING_SPEED_MAX);
+        }
+        brMetro.interval(bottomRingSpeed);
+      }
+    }
+    
+    if (bottomRingDir) bottomRingOffset++;
+    else bottomRingOffset --;
+  
+    if (bottomRingOffset >= BOTTOM_RING_GEAR_SIZE ) bottomRingOffset = 0;
+    if (bottomRingOffset < 0) bottomRingOffset = BOTTOM_RING_GEAR_SIZE-1;
+    
+    /*if (debugOptions[DEBUG_ANIMATION_NECK]) {
+      Serial.println(""); //Serial.print(bottomRingOffset);Serial.println("->");
+    }
+  */
+    bool tempLEDs[3][NUM_NECK_LEDS_PER_RING];
+
+    //init the array with zeros.... NEEDED?
+    for (int r = 0; r<3; r++) {
+      for (int l = 0; l<NUM_NECK_LEDS_PER_RING; l++) {
+        tempLEDs[r][l]=0; //clear 
+      }
+    }
    
-  }  //end eyeMetro 
+    
+    for (int r = 0; r<NUM_NECK_RINGS-1; r++) {                                                          //for each ring
+      int curLED = 0;
+      for (int g = 0; g<NUM_NECK_LEDS_PER_RING / (BOTTOM_RING_GEAR_SIZE) ; g++) {                // for each gear
+
+        if (g%2==0) { //even number
+                                                                    
+            for (int l=0; l<BOTTOM_RING_GEAR_SIZE; l++) {
+              int lo =  BOTTOM_RING_GEAR_SIZE - bottomRingOffset + l;
+              if (lo > BOTTOM_RING_GEAR_SIZE -1) lo= lo- BOTTOM_RING_GEAR_SIZE;
+              //Serial.print(lo);Serial.print(" ");
+              tempLEDs[r][curLED] = neckFacet[r][lo];         //map facet pattern 
+              curLED++;  
+            } //end for l
+            //Serial.println("");
+
+            
+       
+       }
+       else { //odd number
+           int gearEnd = curLED - 1 ; //last LED of prior gear       
+   
+           for (int l=0; l<BOTTOM_RING_GEAR_SIZE; l++) {                                         
+            tempLEDs[r][curLED] = tempLEDs[r][gearEnd - l];
+            curLED++;
+            } //end for l
+        }
+
+        
+        //Serial.print(" ");
+        } //end for l
+    } //end for r 
+   
+  /* crazy debug print version
+    if (debugOptions[DEBUG_ANIMATION_NECK]) {
+      for (int r = 0; r<NUM_NECK_RINGS-1; r++) { //for each ring
   
-  
+        Serial.print(r); Serial.print(": ");
+        for (int l = 0; l<NUM_NECK_LEDS_PER_RING; l++) {
+          if (tempLEDs[r][l] == 1) Serial.print("#");
+          else Serial.print(" ");
+          tempLEDs[r][l]=0;                                               //clear is this needed?
+        }
+        Serial.println("");
+      }
+    } 
+    */
+
+    //copy the bttom neck rings onto the LED array 
+    for (int r = 0; r<NUM_NECK_RINGS-1; r++) { //for each ring
+      for (int l = 0; l<NUM_NECK_LEDS_PER_RING; l++) {
+          int ln = (r+1)*NUM_NECK_LEDS_PER_RING+l;
+          //Serial.print(ln);
+          if (tempLEDs[r][l] == 1) {
+            neckLEDs[ln] = CRGB::Blue; 
+            //Serial.println("*");
+          }
+          else //Serial.println(""); 
+            neckLEDs[ln] = CRGB::Black;                                          
+        }  
+    }
 }
 
 void updateEyeTargeting() {
@@ -668,32 +722,43 @@ void OnRelease(uint8_t key)
 
 void modePowerUp() {
   Serial.println("PowerUp!");
+  clearActions();
   musicLoop=true;
   //firstLoop=true;
   queueWAV(CHANNEL_SFX1, "ACGBOOT.WAV");
   queueWAV(CHANNEL_MUSIC, "ACGBATL1.WAV");
   eyeAniMode = 1;
+  neckAniMode = 1;    //todo queue these to come up over time?
+  bodyAniMode = 1;
   
 }
 
 void modeAttack() {
   Serial.println("Attack!");
+  clearActions();
   display.clearDisplay();
   display.setCursor(0,0);
   display.println("Attack!");
   display.display(); // actually display all of the above
   eyeAniMode = 2;
+  actionQueue[ACTION_PLAY_LAZER_SOUND]=millis() + 2*1000;
+  
+  
 }
 
 void modeDamaged() {
   Serial.println("Ow! Got Hit!");
+  clearActions();
 }
 
 void modeDestroyed() {
   Serial.println("I see dead people!");
+  clearActions();
   musicLoop = false;
   queueWAV(CHANNEL_MUSIC, "ACGBATL3.WAV");
-  eyeAniMode=0;
+  actionQueue[ACTION_FADE_OUT_EYE] =millis() + 4 * 1000;   
+  actionQueue[ACTION_FADE_OUT_NECK]=millis() + 3 * 1000;
+  actionQueue[ACTION_FADE_OUT_BODY]=millis() + 5 * 1000;
 }
 
 
@@ -771,4 +836,62 @@ void updateVolume() {
     Serial.println(mainVolume);
   }
   
+}
+
+/*
+ * updateOLED()
+ * 
+ */
+void updateOLED() {
+
+  if (debugOptions[DEBUG_ANIMATION_EYE] || debugOptions[DEBUG_ANIMATION_NECK] || debugOptions[DEBUG_ANIMATION_BODY]) {
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("MODE:");
+    display.print("TBD");   
+    display.setCursor(80,0);
+    display.print("FPS:");
+    display.print(FastLED.getFPS());
+    display.setCursor(0,8);
+    display.print("E");display.print(eyeAniMode);
+    display.setCursor(0,16);
+    display.print("N");display.print(neckAniMode);
+    display.setCursor(0,24);
+    display.print("B");display.print(bodyAniMode);
+    
+    if (debugOptions[DEBUG_ANIMATION_EYE]) {
+      for (int l=0; l<EYE_NUM_LEDS; l++) {
+         CRGB val = eyeLEDs[l];
+         if (val.blue > 10 || val.red >10) {
+          display.drawPixel(SCREEN_WIDTH-(l/2), 12, SSD1306_WHITE);     
+         }
+      }
+    }
+
+    if (debugOptions[DEBUG_ANIMATION_NECK]) {
+      uint8_t xOffset=20;
+      uint8_t yOffset=16;
+      for (int r=0; r<NUM_NECK_RINGS; r++) {
+        if (r==1) yOffset = yOffset + 2;
+        for (int l=0; l<NUM_NECK_LEDS_PER_RING; l++) {
+           CRGB val = neckLEDs[r*NUM_NECK_LEDS_PER_RING+l];
+           if (val.blue > 10) {
+            display.drawPixel(l+xOffset, r+yOffset, SSD1306_WHITE);     
+           }
+        }
+      }
+    }
+
+   display.display();
+  }
+
+}
+
+void clearActions() {
+  if (debugOptions[DEBUG_ACTION]) Serial.println("Clearing action queue");
+  
+  for (uint8_t a = 0; a< NUM_ACTIONS; a++) {
+    actionQueue[a] = 0;
+  }
+
 }
