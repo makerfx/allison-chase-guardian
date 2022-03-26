@@ -108,6 +108,20 @@ const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animati
 #define EYE_SPEED 100
 #define EYE_SPEED_TARGETING 200
 
+#define BODY_SPEED 100
+#define BODY_BASE_V 48
+#define BODY_SPOT_V 255 
+#define BODY_HUE 224 //pink   ;  0 is red
+#define BODY_SPOT_LEN_MIN 18
+#define BODY_SPOT_LEN_MAX 30
+#define BODY_SPOT_GAP_LEN_MIN 20
+#define BODY_SPOT_GAP_LEN_MAX 40
+#define NUM_BODY_LEDS 300
+CRGB bodyLEDs[NUM_BODY_LEDS];
+uint8_t bodyPattern[NUM_BODY_LEDS];
+#define BODY_DATA_PIN 24 //right connector
+
+
 
 //WARNING - ADJUSTING THIS SETTING COULD LEAD TO 
 //EXCESS CURRENT DRAW AND POSSIBLE SYSTEM DAMAGE
@@ -138,10 +152,19 @@ const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animati
 #define BOTTOM_RING_GEAR_SIZE 36
 #define BOTTOM_RING_MAX_CYCLES 3
 
+#define BODY_SPEED_MIN 80 //note that  speed is inverted
+#define BODY_SPEED_MAX 120
+#define BODY_SPEED_MAX_DECEL 100
+#define BODY_DECEL_DISTANCE 7 // LEDs from target where decel initiates
+#define BODY_DECEL_FACTOR 10 //higher number yields MORE decel
+#define BODY_SPEED_RANDOM_CHECK 18      //on a 1 to 20 random number, anything >= will randomize speed
+#define BODY_SPEED_RANDOM_CHECK_TURN 12 //on a 1 to 20 random number, anything >= will randomize speed
+
 
 Metro eyeMetro = Metro(EYE_SPEED);
 Metro trMetro = Metro(TOP_RING_SPEED_MAX);      //prime the metros
 Metro brMetro = Metro(BOTTOM_RING_SPEED_MAX);
+Metro bodyMetro = Metro(BODY_SPEED);
 Metro queueMetro = Metro(50);
 
 boolean neckTopPattern[NUM_NECK_LEDS_PER_RING];
@@ -155,11 +178,16 @@ int topRingTarget=50; // top ring target
 int topRingSpeed=1; //top ring speed
 boolean topRingDir = 0;
 
-int bottomRingOffset=0; //top ring offset
-int bottomRingTarget=10; // top ring target
+int bottomRingOffset=0; 
+int bottomRingTarget=10; 
 int bottomRingTargetCycles=2; //how many zero crossings before landing on target
-int bottomRingSpeed=1; //top ring speed
+int bottomRingSpeed=1; 
 boolean bottomRingDir = 0;
+
+int bodyOffset=0;
+int bodyTarget=50; 
+int bodySpeed=1; 
+boolean bodyDir = 0;
 
 #define EYE_PATTERN_LEN 12
 #define NUM_RINGS 8
@@ -208,9 +236,12 @@ bool neckFacet[3][BOTTOM_RING_GEAR_SIZE] = { {0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,
                                                 {0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0}, 
                                                 {0,1,1,1,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,0} };   
 
-#define EYE_NUM_LEDS 245
-CRGB eyeLEDs[EYE_NUM_LEDS];
+#define NUM_EYE_LEDS 245
+CRGB eyeLEDs[NUM_EYE_LEDS];
 #define EYE_DATA_PIN 17 //left connector
+
+
+
 
 
 /*
@@ -291,8 +322,9 @@ void setup() {
   }
   
   LEDS.addLeds<WS2812SERIAL,  NECK_DATA_PIN,   BRG>(neckLEDs,  NUM_NECK_LEDS);
-  LEDS.addLeds<WS2812SERIAL,  EYE_DATA_PIN,   BRG>(eyeLEDs,   EYE_NUM_LEDS);
-  
+  LEDS.addLeds<WS2812SERIAL,  EYE_DATA_PIN,    BRG>(eyeLEDs,   NUM_EYE_LEDS);
+  LEDS.addLeds<WS2812SERIAL,  BODY_DATA_PIN,   BRG>(bodyLEDs,  NUM_BODY_LEDS);
+    
   LEDS.setBrightness(DEFAULT_BRIGHTNESS);
 
   //build the top ring pattern to be copied later
@@ -311,6 +343,8 @@ void setup() {
     Serial.println("");  
   }
 
+  //build the body pattern
+  generateBodyPattern();
 
 
   delay (2000);
@@ -383,25 +417,115 @@ void loop() {
  
   } //end trMetro 
    
-  if (eyeMetro.check() == 1) { // check if the metopRingOffset has passed its interval 
+  if (eyeMetro.check() == 1) { // check if the eye metro has passed its interval 
   
-    /*for (int i = 0; i<EYE_PATTERN_LEN; i++) {
-      Serial.print(eyeRingStatus[i]);
-      Serial.print(" ");
-    }e
-    Serial.println("");
-   */
-   if (eyeAniMode == 0) fadeToBlackBy(eyeLEDs, EYE_NUM_LEDS, 60);
+   if (eyeAniMode == 0) fadeToBlackBy(eyeLEDs, NUM_EYE_LEDS, 60);
    else if (eyeAniMode == 1) updateEyeRingStatus();
    else if (eyeAniMode == 2) updateEyeTargeting();
-    
-
    
   }  //end eyeMetro 
   
+  if (bodyMetro.check() == 1) updateBodyLEDs();
   
 }
 
+/*
+ * generateBodyPattern() - this function generates a random pattern that is then animated
+ *                        by updateBodyLEDs()
+ *                        
+ */
+void generateBodyPattern() {
+  bool pType = 1;
+  uint8_t pVal;
+  uint8_t pLen;
+  
+  for (uint16_t l=0; l<NUM_BODY_LEDS; l++) {
+    if (pType) {
+      pLen = random(BODY_SPOT_LEN_MIN, BODY_SPOT_LEN_MAX);
+      pVal = BODY_SPOT_V;
+      }
+    else {
+      pLen = random(BODY_SPOT_GAP_LEN_MIN, BODY_SPOT_GAP_LEN_MAX);
+      pVal = BODY_BASE_V;
+    }
+   
+    for (uint8_t pLED = 0; pLED<pLen; pLED++) {
+      if (l+pLED>=NUM_BODY_LEDS) break;
+      bodyPattern[l+pLED] = pVal;
+      if (pVal == BODY_SPOT_V) {
+        Serial.print("#");
+      }
+      else Serial.print(" ");
+    }
+    l = l + pLen;
+    if (l>=NUM_BODY_LEDS) break;
+    pType = !pType;
+  }
+  Serial.println("\nDone generating body pattern");
+}
+
+void updateBodyLEDs() {
+  if (bodyAniMode == 0) {
+    fadeToBlackBy(bodyLEDs, NUM_BODY_LEDS, 60);
+    return;
+  }
+  else if (bodyAniMode == 1) {//normal body operation
+
+    if (bodyOffset == bodyTarget) {
+          bodyDir = !bodyDir;
+          bodyTarget = random(0, NUM_BODY_LEDS);
+          if (random(1,20) >= BODY_SPEED_RANDOM_CHECK_TURN) {
+              bodySpeed = random(BODY_SPEED_MIN,BODY_SPEED_MAX);
+          }
+          bodyMetro.interval(bodySpeed);
+          //Serial.print("reverse - new target = "); Serial.println(bodyTarget);
+        }
+      
+        //decel math
+        int dist = abs(bodyOffset-bodyTarget);
+        
+        if (dist < BODY_DECEL_DISTANCE) {
+          int temp_bodySpeed = bodySpeed * (BODY_DECEL_FACTOR/dist);
+          if (temp_bodySpeed > BODY_SPEED_MAX_DECEL) {
+            temp_bodySpeed = BODY_SPEED_MAX_DECEL;
+            bodyMetro.interval(temp_bodySpeed);
+          }
+          else {
+            //random speed changes
+            if (random(1,20) >= BODY_SPEED_RANDOM_CHECK) {
+              bodySpeed = random(BODY_SPEED_MIN,BODY_SPEED_MAX);
+            }
+            bodyMetro.interval(bodySpeed);
+          }
+        }
+        
+        if (bodyDir) bodyOffset++;
+        else bodyOffset --;
+      
+        
+       
+        if (bodyOffset >= NUM_NECK_LEDS_PER_RING ) bodyOffset = 0;
+        if (bodyOffset < 0) bodyOffset = NUM_NECK_LEDS_PER_RING-1;
+        
+        //Serial.println(""); Serial.print(bodyOffset); Serial.print("->");
+        
+        //copy the pattern onto the LED array starting from the top ring offset
+        for (int i=0; i<NUM_BODY_LEDS ; i++) { 
+           int lo = NUM_BODY_LEDS - bodyOffset + i;
+           if (lo > NUM_BODY_LEDS - 1) lo= lo-NUM_BODY_LEDS ;
+            bodyLEDs[i] = CHSV(BODY_HUE, 255, bodyPattern[lo]);
+        }  
+
+    }
+/*
+  //copy the pattern to the LEDs
+  for (uint16_t l=0; l<NUM_BODY_LEDS; l++) {
+    bodyLEDs[l] = CRGB::Red; 
+    bodyLEDs[l] = CHSV(BODY_HUE, 255, bodyPattern[l]);
+  }
+ */  
+ 
+}
 void updateNeckTopRing() {
   
     if (topRingOffset == topRingTarget) {
@@ -587,7 +711,7 @@ void updateEyeTargeting() {
     }
     
     if (eyeTargetAniFrame == EYE_TARGET_ANI_FRAMES) {
-      fadeToBlackBy(eyeLEDs, EYE_NUM_LEDS, 80);
+      fadeToBlackBy(eyeLEDs, NUM_EYE_LEDS, 80);
       eyeAniMode = 1;
       eyeTargetAniFrame = 0;
       eyeMetro.interval(EYE_SPEED);
@@ -741,7 +865,8 @@ void modeAttack() {
   display.println("Attack!");
   display.display(); // actually display all of the above
   eyeAniMode = 2;
-  actionQueue[ACTION_PLAY_LAZER_SOUND]=millis() + 2*1000;
+  queueWAV(CHANNEL_SFX1, "ACGCHRG.WAV");
+  actionQueue[ACTION_PLAY_LAZER_SOUND]=millis() + 1700;
   
   
 }
@@ -860,7 +985,7 @@ void updateOLED() {
     display.print("B");display.print(bodyAniMode);
     
     if (debugOptions[DEBUG_ANIMATION_EYE]) {
-      for (int l=0; l<EYE_NUM_LEDS; l++) {
+      for (int l=0; l<NUM_EYE_LEDS; l++) {
          CRGB val = eyeLEDs[l];
          if (val.blue > 10 || val.red >10) {
           display.drawPixel(SCREEN_WIDTH-(l/2), 12, SSD1306_WHITE);     
@@ -870,7 +995,7 @@ void updateOLED() {
 
     if (debugOptions[DEBUG_ANIMATION_NECK]) {
       uint8_t xOffset=20;
-      uint8_t yOffset=16;
+      uint8_t yOffset=18;
       for (int r=0; r<NUM_NECK_RINGS; r++) {
         if (r==1) yOffset = yOffset + 2;
         for (int l=0; l<NUM_NECK_LEDS_PER_RING; l++) {
@@ -882,6 +1007,21 @@ void updateOLED() {
       }
     }
 
+    if (debugOptions[DEBUG_ANIMATION_BODY]) {
+      uint8_t xOffset=20;
+      uint8_t yOffset=26;
+      uint8_t viewPort = SCREEN_WIDTH - xOffset;
+      for (uint16_t l=0; l<NUM_BODY_LEDS; l++) {
+        CRGB val = bodyLEDs[l];
+        
+        if (val.red >50) {
+          
+          uint8_t x = xOffset +  l % viewPort;
+          uint8_t y = yOffset + (l / viewPort) * 2; //space lines apart
+          display.drawPixel( x , y , SSD1306_WHITE);
+        }
+      }
+    }
    display.display();
   }
 
