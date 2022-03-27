@@ -177,26 +177,28 @@ void loop() {
  */
 void generateBodyPattern() {
   bool pType = 1;
-  CRGB::HTMLColorCode pVal;
+  CRGB pVal;
   uint8_t pLen;
   
   for (uint16_t l=0; l<NUM_BODY_LEDS; l++) {
     if (pType) {
       pLen = random(BODY_SPOT_LEN_MIN, BODY_SPOT_LEN_MAX);
       //pVal = BODY_SPOT_V;
-      pVal = BODY_SPOT_COLOR;
+      //pVal = BODY_SPOT_COLOR;
+      pVal = bodySpotColor;
 
       }
     else {
       pLen = random(BODY_SPOT_GAP_LEN_MIN, BODY_SPOT_GAP_LEN_MAX);
       //pVal = BODY_BASE_V;
-      pVal = BODY_SPOT_GAP_COLOR;
+      //pVal = BODY_SPOT_GAP_COLOR;
+      pVal = bodySpotGapColor;
     }
    
     for (uint8_t pLED = 0; pLED<pLen; pLED++) {
       if (l+pLED>=NUM_BODY_LEDS) break;
       bodyPattern[l+pLED] = pVal;
-      if (pVal == BODY_SPOT_COLOR) {
+      if (pVal == bodySpotColor) {
         Serial.print("#");
       }
       else Serial.print(" ");
@@ -542,12 +544,29 @@ void debugOptionsCheck() {
           case 'r': OnRelease(4); break;
           case 't': OnRelease(5); break;
           case 'y': OnRelease(6); break;
+          case ',': bodySpotColor+= CRGB(0,10,10); printDebugColor("Body Spot",bodySpotColor); generateBodyPattern(); break;
+          case '.': bodySpotColor-= CRGB(0,10,10); printDebugColor("Body Spot",bodySpotColor); generateBodyPattern(); break;
+          case '<': bodySpotGapColor-= CRGB(10,0,0); printDebugColor("Body Gap",bodySpotGapColor); generateBodyPattern(); break;
+          case '>': bodySpotGapColor+= CRGB(10,0,0); printDebugColor("Body Gap",bodySpotGapColor); generateBodyPattern(); break;
+          
+          
           }
          
      
           
       }
        
+}
+
+void printDebugColor(String colorName, CRGB color){
+  Serial.print(colorName);
+  Serial.print(":");
+  Serial.print (color.red);
+  Serial.print(",");
+  Serial.print (color.green);
+  Serial.print(",");
+  Serial.print (color.blue);
+  Serial.println();  
 }
 
 /*

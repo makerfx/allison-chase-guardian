@@ -110,9 +110,8 @@ const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animati
 #define EYE_SPEED_TARGETING 200
 
 #define BODY_SPEED 100
-#define BODY_SPOT_GAP_COLOR CRGB::DeepPink
-#define BODY_SPOT_COLOR CRGB::HotPink 
-#define BODY_HUE 248 //pink   ;  0 is red
+#define BODY_SPOT_GAP_COLOR CRGB::Magenta
+#define BODY_SPOT_COLOR CRGB::White
 #define BODY_SPOT_LEN_MIN 18
 #define BODY_SPOT_LEN_MAX 30
 #define BODY_SPOT_GAP_LEN_MIN 20
@@ -122,6 +121,8 @@ CRGB bodyLEDs[NUM_BODY_LEDS];
 CRGB bodyPattern[NUM_BODY_LEDS];
 #define BODY_DATA_PIN 24 //right connector
 
+CRGB bodySpotColor = CRGB::White;
+CRGB bodySpotGapColor = CRGB::Magenta;
 
 
 //WARNING - ADJUSTING THIS SETTING COULD LEAD TO 
