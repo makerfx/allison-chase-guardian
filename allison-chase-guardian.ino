@@ -109,16 +109,16 @@ const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animati
 #define EYE_SPEED_TARGETING 200
 
 #define BODY_SPEED 100
-#define BODY_BASE_V 48
-#define BODY_SPOT_V 255 
-#define BODY_HUE 224 //pink   ;  0 is red
+#define BODY_SPOT_GAP_COLOR CRGB::DeepPink
+#define BODY_SPOT_COLOR CRGB::HotPink 
+#define BODY_HUE 248 //pink   ;  0 is red
 #define BODY_SPOT_LEN_MIN 18
 #define BODY_SPOT_LEN_MAX 30
 #define BODY_SPOT_GAP_LEN_MIN 20
 #define BODY_SPOT_GAP_LEN_MAX 40
 #define NUM_BODY_LEDS 300
 CRGB bodyLEDs[NUM_BODY_LEDS];
-uint8_t bodyPattern[NUM_BODY_LEDS];
+CRGB bodyPattern[NUM_BODY_LEDS];
 #define BODY_DATA_PIN 24 //right connector
 
 
@@ -436,23 +436,26 @@ void loop() {
  */
 void generateBodyPattern() {
   bool pType = 1;
-  uint8_t pVal;
+  CRGB::HTMLColorCode pVal;
   uint8_t pLen;
   
   for (uint16_t l=0; l<NUM_BODY_LEDS; l++) {
     if (pType) {
       pLen = random(BODY_SPOT_LEN_MIN, BODY_SPOT_LEN_MAX);
-      pVal = BODY_SPOT_V;
+      //pVal = BODY_SPOT_V;
+      pVal = BODY_SPOT_COLOR;
+
       }
     else {
       pLen = random(BODY_SPOT_GAP_LEN_MIN, BODY_SPOT_GAP_LEN_MAX);
-      pVal = BODY_BASE_V;
+      //pVal = BODY_BASE_V;
+      pVal = BODY_SPOT_GAP_COLOR;
     }
    
     for (uint8_t pLED = 0; pLED<pLen; pLED++) {
       if (l+pLED>=NUM_BODY_LEDS) break;
       bodyPattern[l+pLED] = pVal;
-      if (pVal == BODY_SPOT_V) {
+      if (pVal == BODY_SPOT_COLOR) {
         Serial.print("#");
       }
       else Serial.print(" ");
@@ -513,7 +516,7 @@ void updateBodyLEDs() {
         for (int i=0; i<NUM_BODY_LEDS ; i++) { 
            int lo = NUM_BODY_LEDS - bodyOffset + i;
            if (lo > NUM_BODY_LEDS - 1) lo= lo-NUM_BODY_LEDS ;
-            bodyLEDs[i] = CHSV(BODY_HUE, 255, bodyPattern[lo]);
+            bodyLEDs[i/5] = bodyPattern[lo];
         }  
 
     }
@@ -1012,9 +1015,8 @@ void updateOLED() {
       uint8_t yOffset=26;
       uint8_t viewPort = SCREEN_WIDTH - xOffset;
       for (uint16_t l=0; l<NUM_BODY_LEDS; l++) {
-        CRGB val = bodyLEDs[l];
-        
-        if (val.red >50) {
+        CRGB colorCheck = BODY_SPOT_COLOR;
+        if (bodyLEDs[l] == colorCheck) {
           
           uint8_t x = xOffset +  l % viewPort;
           uint8_t y = yOffset + (l / viewPort) * 2; //space lines apart
