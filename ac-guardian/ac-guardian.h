@@ -56,16 +56,17 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=271.00390625,256.99999809265137
 AudioPlaySdWav *channels[NUM_CHANNELS] = { &playSdWav1, &playSdWav2, &playSdWav3 };
 String playQueue[NUM_CHANNELS];
 
-#define NUM_ACTIONS 4
+#define NUM_ACTIONS 5
 
 #define ACTION_FADE_OUT_EYE        0
 #define ACTION_FADE_OUT_NECK       1
 #define ACTION_FADE_OUT_BODY       2
-#define ACTION_PLAY_LAZER_SOUND    3
-
+#define ACTION_PLAY_LASER_SOUND    3
+#define ACTION_SET_MODE_OFF        4
 
 unsigned long actionQueue[NUM_ACTIONS];
-const char *actionsText[NUM_ACTIONS]={"Fade Out Eye", "Fade Out Neck", "Fade Out Body"}; 
+const char *actionsText[NUM_ACTIONS]={"Fade Out Eye", "Fade Out Neck", "Fade Out Body", "Play Laser Sound", "Set Mode Off" }; 
+
 
 float mainVolume = STARTING_VOLUME;
 bool musicLoop = 0;
@@ -224,6 +225,18 @@ boolean eyeTargetAniFrames[EYE_TARGET_ANI_FRAMES][8] = {
 uint8_t eyeAniMode = 0;
 uint8_t neckAniMode = 0;
 uint8_t bodyAniMode = 0;
+
+#define NUM_MODES 6
+
+#define MODE_OFF        0
+#define MODE_POWER_UP   1
+#define MODE_IDLE       2
+#define MODE_ATTACK     3
+#define MODE_DAMAGED    4
+#define MODE_DESTROYED  5
+
+const char *modeText[NUM_MODES]={"OFF", "POWER UP", "IDLE" ,"ATTACK", "DAMAGED", "DESTROYED"}; 
+uint8_t mode = 0;
 
 int eyeTargetAniFrame = 0;
 

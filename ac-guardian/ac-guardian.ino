@@ -117,7 +117,9 @@ void loop() {
         if (q==ACTION_FADE_OUT_EYE) eyeAniMode = 0;
         else if (q==ACTION_FADE_OUT_NECK) neckAniMode = 0;
         else if (q==ACTION_FADE_OUT_BODY) bodyAniMode = 0;
-        else if (q==ACTION_PLAY_LAZER_SOUND) playWAV(CHANNEL_SFX1, "ACGLAZR1.WAV");
+        else if (q==ACTION_PLAY_LASER_SOUND) playWAV(CHANNEL_SFX1, "ACGLAZR1.WAV");
+        else if (q==ACTION_SET_MODE_OFF) mode = MODE_OFF;
+        
         actionQueue[q]=0;
       }
     }
@@ -139,6 +141,7 @@ void loop() {
     if ( !block && (musicLoop==true) && !(channels[CHANNEL_MUSIC]->isPlaying())) {
       if(debugOptions[DEBUG_AUDIO]) Serial.println("Audio: restarting music loop");
       playWAV(CHANNEL_MUSIC, "ACGBATL2.WAV");
+      if (mode == MODE_POWER_UP) mode = MODE_IDLE;
     }
   } //end playQueueMetro check
   
@@ -455,6 +458,7 @@ void updateEyeTargeting() {
       fadeToBlackBy(eyeLEDs, NUM_EYE_LEDS, 80);
       eyeAniMode = 1;
       eyeTargetAniFrame = 0;
+      if (mode == MODE_ATTACK) mode = MODE_IDLE;
       eyeMetro.interval(EYE_SPEED);
     } //end if
   } //end for
@@ -586,7 +590,7 @@ void OnRelease(uint8_t key)
 }
 
 void modePowerUp() {
-  Serial.println("PowerUp!");
+  mode=MODE_POWER_UP;
   clearActions();
   musicLoop=true;
   //firstLoop=true;
@@ -599,34 +603,34 @@ void modePowerUp() {
 }
 
 void modeAttack() {
-  Serial.println("Attack!");
+  mode=MODE_ATTACK;
   clearActions();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.println("Attack!");
-  display.display(); // actually display all of the above
   eyeAniMode = 2;
   queueWAV(CHANNEL_SFX1, "ACGCHRG.WAV");
-  actionQueue[ACTION_PLAY_LAZER_SOUND]=millis() + 1700;
-  
-  
+  actionQueue[ACTION_PLAY_LASER_SOUND]=millis() + 1700;
 }
 
 void modeDamaged() {
-  Serial.println("Ow! Got Hit!");
+  mode=MODE_DAMAGED;
   clearActions();
 }
 
 void modeDestroyed() {
-  Serial.println("I see dead people!");
+  mode=MODE_DESTROYED;
   clearActions();
   musicLoop = false;
   queueWAV(CHANNEL_MUSIC, "ACGBATL3.WAV");
-  actionQueue[ACTION_FADE_OUT_EYE] =millis() + 4 * 1000;   
-  actionQueue[ACTION_FADE_OUT_NECK]=millis() + 3 * 1000;
-  actionQueue[ACTION_FADE_OUT_BODY]=millis() + 5 * 1000;
+  queueAction(ACTION_FADE_OUT_EYE,  4000);
+  queueAction(ACTION_FADE_OUT_NECK, 3000);
+  queueAction(ACTION_FADE_OUT_BODY, 5000);
+  queueAction(ACTION_SET_MODE_OFF,  6000);  
 }
 
+void queueAction(uint8_t action, long time) {
+  if (debugOptions[DEBUG_ACTION]) Serial.printf("Queuing action: %s for %d ms\n", actionsText[action], time);
+  actionQueue[action]= millis() + time;
+  
+}
 
 
 void toggleMute() {
@@ -714,8 +718,8 @@ void updateOLED() {
     display.clearDisplay();
     display.setCursor(0,0);
     display.print("MODE:");
-    display.print("TBD");   
-    display.setCursor(80,0);
+    display.print(modeText[mode]);   
+    display.setCursor(90,0);
     display.print("FPS:");
     display.print(FastLED.getFPS());
     display.setCursor(0,8);
