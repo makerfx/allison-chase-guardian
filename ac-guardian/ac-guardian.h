@@ -52,20 +52,24 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=271.00390625,256.99999809265137
 #define MIN_VOLUME            .2 
 #define VOLUME_INCREMENT      .1 //how much the volume changes when using buttons
 
+#define NUM_SFX_HIT 3     //how many ACGHIT#.WAV files do we have?
+
 //I use this syntax so that I can leave the declarations above which come from the Audio Design tool
 AudioPlaySdWav *channels[NUM_CHANNELS] = { &playSdWav1, &playSdWav2, &playSdWav3 };
 String playQueue[NUM_CHANNELS];
 
-#define NUM_ACTIONS 5
+#define NUM_ACTIONS 6
 
 #define ACTION_FADE_OUT_EYE        0
 #define ACTION_FADE_OUT_NECK       1
 #define ACTION_FADE_OUT_BODY       2
 #define ACTION_PLAY_LASER_SOUND    3
 #define ACTION_SET_MODE_OFF        4
+#define ACTION_SET_MODE_IDLE       5
+
 
 unsigned long actionQueue[NUM_ACTIONS];
-const char *actionsText[NUM_ACTIONS]={"Fade Out Eye", "Fade Out Neck", "Fade Out Body", "Play Laser Sound", "Set Mode Off" }; 
+const char *actionsText[NUM_ACTIONS]={"Fade Out Eye", "Fade Out Neck", "Fade Out Body", "Play Laser Sound", "Set Mode Off", "Set Mode Idle" }; 
 
 
 float mainVolume = STARTING_VOLUME;
@@ -110,29 +114,49 @@ const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animati
 #define EYE_SPEED_TARGETING 200
 
 #define BODY_SPEED 100
-#define BODY_SPOT_GAP_COLOR CRGB::Magenta
-#define BODY_SPOT_COLOR CRGB::White
-#define BODY_SPOT_LEN_MIN 18
+//#define BODY_SPOT_GAP_COLOR CRGB::DeepPink
+//#define BODY_SPOT_COLOR CRGB::HotPink
+
+#define BODY_SPOT_LEN_MIN 20
 #define BODY_SPOT_LEN_MAX 30
-#define BODY_SPOT_GAP_LEN_MIN 20
-#define BODY_SPOT_GAP_LEN_MAX 40
+#define BODY_SPOT_GAP_LEN_MIN 5
+#define BODY_SPOT_GAP_LEN_MAX 7
 #define NUM_BODY_LEDS 300
+#define BODY_SPEED_MIN 200 //note that  speed is inverted
+#define BODY_SPEED_MAX 400
+#define BODY_SPEED_MAX_DECEL 100
+#define BODY_DECEL_DISTANCE 7 // LEDs from target where decel initiates
+#define BODY_DECEL_FACTOR 10 //higher number yields MORE decel
+#define BODY_SPEED_RANDOM_CHECK 18      //on a 1 to 20 random number, anything >= will randomize speed
+#define BODY_SPEED_RANDOM_CHECK_TURN 12 //on a 1 to 20 random number, anything >= will randomize speed
+
+
 CRGB bodyLEDs[NUM_BODY_LEDS];
 CRGB bodyPattern[NUM_BODY_LEDS];
 #define BODY_DATA_PIN 24 //right connector
 
-CRGB bodySpotColor = CRGB::White;
-CRGB bodySpotGapColor = CRGB::Magenta;
+//CRGB bodySpotColor = CRGB::DeepPink;
+//CRGB bodySpotColor = CRGB(255,20,147);
+CRGB bodySpotColor = CRGB(255,20,70); //Hot topic pink per Allison
+
+//CRGB bodySpotGapColor = CRGB(255,57,132);
+//CRGB bodySpotGapColor = CRGB(255,105,180);
+CRGB bodySpotGapColor = CRGB(255,105-32,180-32); //American Girl Pink
 
 
 //WARNING - ADJUSTING THIS SETTING COULD LEAD TO 
 //EXCESS CURRENT DRAW AND POSSIBLE SYSTEM DAMAGE
-#define DEFAULT_BRIGHTNESS 24 //WARNING!!!!!!!!!
+#define DEFAULT_BRIGHTNESS 64 //WARNING!!!!!!!!!
 //DON'T DO IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+/*
+ * neck
+ * 
+ * 
+ */
 
-#define NUM_NECK_LEDS_PER_RING 144 //it is likely 143, but the pattern math is designed for 144
-#define NUM_NECK_RINGS 4
+#define NUM_NECK_LEDS_PER_RING 147 
+#define NUM_NECK_RINGS 6
 #define NUM_NECK_LEDS NUM_NECK_LEDS_PER_RING * NUM_NECK_RINGS
 #define NECK_TOP_GEARS_NUM 6
 #define NECK_TOP_GEAR_WIDTH NUM_NECK_LEDS_PER_RING / NECK_TOP_GEARS_NUM
@@ -151,16 +175,9 @@ CRGB bodySpotGapColor = CRGB::Magenta;
 #define BOTTOM_RING_DECEL_FACTOR 10 //higher number yields MORE decel
 #define BOTTOM_RING_SPEED_RANDOM_CHECK 18      //on a 1 to 20 random number, anything >= will randomize speed
 #define BOTTOM_RING_SPEED_RANDOM_CHECK_TURN 12 //on a 1 to 20 random number, anything >= will randomize speed
-#define BOTTOM_RING_GEAR_SIZE 36
+#define BOTTOM_RING_GEAR_SIZE 37
 #define BOTTOM_RING_MAX_CYCLES 3
 
-#define BODY_SPEED_MIN 80 //note that  speed is inverted
-#define BODY_SPEED_MAX 120
-#define BODY_SPEED_MAX_DECEL 100
-#define BODY_DECEL_DISTANCE 7 // LEDs from target where decel initiates
-#define BODY_DECEL_FACTOR 10 //higher number yields MORE decel
-#define BODY_SPEED_RANDOM_CHECK 18      //on a 1 to 20 random number, anything >= will randomize speed
-#define BODY_SPEED_RANDOM_CHECK_TURN 12 //on a 1 to 20 random number, anything >= will randomize speed
 
 
 Metro eyeMetro = Metro(EYE_SPEED);
@@ -246,9 +263,10 @@ int eyeTargetAniFrame = 0;
                                                      
 
 
-bool neckFacet[3][BOTTOM_RING_GEAR_SIZE] = { {0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,0,0,1,1,1,0,0},    
-                                                {0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0}, 
-                                                {0,1,1,1,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,0} };   
+bool neckFacet[4][BOTTOM_RING_GEAR_SIZE] = { {   0,1,0,1,0,0,0,1,1,1,0,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,0,0,1,1,1,0,0},    
+                                                {0,1,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0},
+                                                {0,1,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0}, 
+                                                {0,1,1,1,0,0,0,1,0,1,0,0,0,0,1,1,1,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,1,0,1,0,0} };   
 
 #define NUM_EYE_LEDS 245
 CRGB eyeLEDs[NUM_EYE_LEDS];

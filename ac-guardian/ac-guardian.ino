@@ -93,6 +93,16 @@ void setup() {
   display.display(); // actually display all of the above
   printDebugOptions();
 
+  Serial.println(bodySpotColor.red);
+  Serial.println(bodySpotColor.green);
+  Serial.println(bodySpotColor.blue);
+
+  Serial.println("");
+  Serial.println(bodySpotGapColor.red);
+  Serial.println(bodySpotGapColor.green);
+  Serial.println(bodySpotGapColor.blue);
+  
+
   //modePowerUp();
 }
 
@@ -119,6 +129,7 @@ void loop() {
         else if (q==ACTION_FADE_OUT_BODY) bodyAniMode = 0;
         else if (q==ACTION_PLAY_LASER_SOUND) playWAV(CHANNEL_SFX1, "ACGLAZR1.WAV");
         else if (q==ACTION_SET_MODE_OFF) mode = MODE_OFF;
+        else if (q==ACTION_SET_MODE_IDLE) mode = MODE_IDLE;
         
         actionQueue[q]=0;
       }
@@ -194,20 +205,25 @@ void generateBodyPattern() {
       //pVal = BODY_SPOT_GAP_COLOR;
       pVal = bodySpotGapColor;
     }
-   
+
     for (uint8_t pLED = 0; pLED<pLen; pLED++) {
+      //Serial.print(l+pLED);
+      
       if (l+pLED>=NUM_BODY_LEDS) break;
       bodyPattern[l+pLED] = pVal;
-      if (pVal == bodySpotColor) {
+ 
+      /*
+       if (pVal == bodySpotColor) {
         Serial.print("#");
       }
-      else Serial.print(" ");
+      else if (pVal == bodySpotGapColor) Serial.print(".");
+      */
     }
-    l = l + pLen;
+ 
+    l = l + pLen - 1;
     if (l>=NUM_BODY_LEDS) break;
     pType = !pType;
   }
-  Serial.println("\nDone generating body pattern");
 }
 
 void updateBodyLEDs() {
@@ -250,8 +266,8 @@ void updateBodyLEDs() {
       
         
        
-        if (bodyOffset >= NUM_NECK_LEDS_PER_RING ) bodyOffset = 0;
-        if (bodyOffset < 0) bodyOffset = NUM_NECK_LEDS_PER_RING-1;
+        if (bodyOffset >= NUM_BODY_LEDS ) bodyOffset = 0;
+        if (bodyOffset < 0) bodyOffset = NUM_BODY_LEDS-1;
         
         //Serial.println(""); Serial.print(bodyOffset); Serial.print("->");
         
@@ -259,7 +275,7 @@ void updateBodyLEDs() {
         for (int i=0; i<NUM_BODY_LEDS ; i++) { 
            int lo = NUM_BODY_LEDS - bodyOffset + i;
            if (lo > NUM_BODY_LEDS - 1) lo= lo-NUM_BODY_LEDS ;
-            bodyLEDs[i/5] = bodyPattern[lo];
+            bodyLEDs[i] = bodyPattern[lo];
         }  
 
     }
@@ -318,7 +334,13 @@ void updateNeckTopRing() {
        if (lo > NUM_NECK_LEDS_PER_RING - 1) lo= lo-NUM_NECK_LEDS_PER_RING ;
        if (neckTopPattern[lo]) neckLEDs[i] = CRGB::Blue; 
        else neckLEDs[i] = CRGB::Black;
+    }
+    //copy the pattern onto the second row of LEDs in reverse (because I had to make things complicated!)
+    for (int i=0; i<NUM_NECK_LEDS_PER_RING-1 ; i++) { 
+       neckLEDs[i+NUM_NECK_LEDS_PER_RING] = neckLEDs[NUM_NECK_LEDS_PER_RING-i-1];
     }  
+
+    
 }
 void updateNeckBottomRings() {
   if (bottomRingOffset == 0) bottomRingTargetCycles--;
@@ -364,10 +386,10 @@ void updateNeckBottomRings() {
       Serial.println(""); //Serial.print(bottomRingOffset);Serial.println("->");
     }
   */
-    bool tempLEDs[3][NUM_NECK_LEDS_PER_RING];
+    bool tempLEDs[NUM_NECK_RINGS][NUM_NECK_LEDS_PER_RING];
 
     //init the array with zeros.... NEEDED?
-    for (int r = 0; r<3; r++) {
+    for (int r = 0; r<NUM_NECK_RINGS; r++) {
       for (int l = 0; l<NUM_NECK_LEDS_PER_RING; l++) {
         tempLEDs[r][l]=0; //clear 
       }
@@ -376,7 +398,7 @@ void updateNeckBottomRings() {
     
     for (int r = 0; r<NUM_NECK_RINGS-1; r++) {                                                          //for each ring
       int curLED = 0;
-      for (int g = 0; g<NUM_NECK_LEDS_PER_RING / (BOTTOM_RING_GEAR_SIZE) ; g++) {                // for each gear
+      for (int g = 0; g<(NUM_NECK_LEDS_PER_RING / BOTTOM_RING_GEAR_SIZE)+1 ; g++) {                // for each gear //+1 is hack to fit
 
         if (g%2==0) { //even number
                                                                     
@@ -405,26 +427,36 @@ void updateNeckBottomRings() {
         //Serial.print(" ");
         } //end for l
     } //end for r 
-   
-  /* crazy debug print version
+
+   /*
+  // crazy debug print version
     if (debugOptions[DEBUG_ANIMATION_NECK]) {
-      for (int r = 0; r<NUM_NECK_RINGS-1; r++) { //for each ring
+      for (int r = 0; r<NUM_NECK_RINGS-2; r++) { //for each ring
   
         Serial.print(r); Serial.print(": ");
         for (int l = 0; l<NUM_NECK_LEDS_PER_RING; l++) {
           if (tempLEDs[r][l] == 1) Serial.print("#");
           else Serial.print(" ");
-          tempLEDs[r][l]=0;                                               //clear is this needed?
+          //tempLEDs[r][l]=0;                                               //clear is this needed?
         }
         Serial.println("");
       }
     } 
     */
 
-    //copy the bttom neck rings onto the LED array 
-    for (int r = 0; r<NUM_NECK_RINGS-1; r++) { //for each ring
+
+    //copy the bottom neck rings onto the LED array 
+    for (int r = 0; r<NUM_NECK_RINGS-2; r++) { //for each ring
       for (int l = 0; l<NUM_NECK_LEDS_PER_RING; l++) {
-          int ln = (r+1)*NUM_NECK_LEDS_PER_RING+l;
+          //int ln = (r+1)*NUM_NECK_LEDS_PER_RING+l;
+          int ln = 0;
+          
+          if (r==1 || r ==3) {
+              ln = (r+2)*NUM_NECK_LEDS_PER_RING+l; //hack!
+          }
+          else 
+              ln = (r+2+1)*NUM_NECK_LEDS_PER_RING-l-1;
+              
           //Serial.print(ln);
           if (tempLEDs[r][l] == 1) {
             neckLEDs[ln] = CRGB::Blue; 
@@ -609,6 +641,7 @@ void OnRelease(uint8_t key)
 }
 
 void modePowerUp() {
+  if (mode!=MODE_OFF) return;
   mode=MODE_POWER_UP;
   clearActions();
   musicLoop=true;
@@ -622,6 +655,7 @@ void modePowerUp() {
 }
 
 void modeAttack() {
+  if (mode!=MODE_IDLE) return;
   mode=MODE_ATTACK;
   clearActions();
   eyeAniMode = 2;
@@ -630,11 +664,18 @@ void modeAttack() {
 }
 
 void modeDamaged() {
+  if (mode!=MODE_IDLE) return;
   mode=MODE_DAMAGED;
+  String fn = "ACGHIT";
+  fn = fn + random(1, NUM_SFX_HIT) + ".WAV";
+  queueWAV(CHANNEL_SFX1, fn); 
   clearActions();
+  queueAction(ACTION_SET_MODE_IDLE,  2000); //this may change to an end of animation trigger 
+                                            //instead of queued action once we have animation code for this
 }
 
 void modeDestroyed() {
+  if (mode!=MODE_IDLE) return;
   mode=MODE_DESTROYED;
   clearActions();
   musicLoop = false;
@@ -776,7 +817,7 @@ void updateOLED() {
       uint8_t yOffset=26;
       uint8_t viewPort = SCREEN_WIDTH - xOffset;
       for (uint16_t l=0; l<NUM_BODY_LEDS; l++) {
-        CRGB colorCheck = BODY_SPOT_COLOR;
+        CRGB colorCheck = bodySpotColor;
         if (bodyLEDs[l] == colorCheck) {
           
           uint8_t x = xOffset +  l % viewPort;
