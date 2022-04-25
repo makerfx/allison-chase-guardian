@@ -1,13 +1,13 @@
 #include <Arduino.h>
 #include <USBHost_t36.h>
 
-#define NUM_KEYS 16
+#define MAX_KEYS 64-3 //64 byte packet, keys start in 4th byte
 
 class OSUKeyboard : public USBHIDInput {
 public:
   OSUKeyboard(USBHost &host, uint32_t usage = 0) : fixed_usage_(usage) { init(); }
   uint32_t usage(void) {return usage_;}
-  void     attachRawPress(void (*f)(uint8_t keycode)) { rawKeyPressedFunction = f; }
+  void     attachRawPress(void (*f)(uint8_t keycode)) { rawKeyPressedFunction = f;}
   void     attachRawRelease(void (*f)(uint8_t keycode)) { rawKeyReleasedFunction = f; }
   
 protected:
@@ -32,7 +32,7 @@ private:
   int count_usages_ = 0;
   int index_usages_ = 0;
 
-  bool keys[NUM_KEYS];
+  bool keys[256];
   
   void (*rawKeyPressedFunction)(uint8_t keycode) = nullptr;
   void (*rawKeyReleasedFunction)(uint8_t keycode) = nullptr;

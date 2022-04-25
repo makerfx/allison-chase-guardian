@@ -89,43 +89,45 @@ bool OSUKeyboard::hid_process_in_data(const Transfer_t *transfer)
   //teensy doesn't see it as a keyboard, but the raw HID data is there
 
   //uncomment this line for raw dump
-  dump_hexbytes(transfer->buffer, transfer->length);
-
+  //dump_hexbytes(transfer->buffer, transfer->length);
+  
   
   const uint8_t *p = (const uint8_t *)transfer->buffer;
-
-  //todo, set internal variables to record keydown / then up so that we don't duplicate report.
-  bool tempKeys[NUM_KEYS]; 
   
-  //init tempKeys
-  for (int i=0; i<NUM_KEYS; i++){
-    tempKeys[i] = 0;
+  if ((mydevice->idVendor == 0x8808) && (mydevice->idProduct == 0x660c)) {   //rotary knob
+     //dump_hexbytes(transfer->buffer, transfer->length);
+     //key is always the second byte, we just send that as a released since it is never held
+     uint16_t k = *(p+1);
+     if (k) {
+      if (rawKeyReleasedFunction) rawKeyReleasedFunction(k); 
+     }
+     return 0;
   }
 
-  //uint8_t alphaBase = 0x04;   //A
-  uint8_t alphaBase = KEY_A;
-  uint8_t numBase   = 0x1e;   //1
-  
-  //look at data buffer to determine which key states
-  for (int i=0; i<NUM_KEYS; i++){
-    uint8_t k = *(p+i+3);   //the data packet keys start in 3 positions
 
+  //todo, set internal variables to record keydown / then up so that we don't duplicate report.
+  bool tempKeys[256]; 
   
-    for (int i=0; i<NUM_KEYS; i++){ 
-      if (k == alphaBase + i) tempKeys[i+10] = true; 
-      else if (k == numBase + i) tempKeys[i] = true;
-      
-    }
+  //init tempKeys
+  for (uint16_t i=0; i<sizeof(tempKeys); i++){
+    tempKeys[i] = 0;
+  }
+ 
+  
+  //look at data buffer to determine which keys are pressed
+  for (uint16_t i=0; i<MAX_KEYS; i++){
+    uint16_t k = *(p+i+3);   //the data packet keys start in 4th byte
+    tempKeys[k] = true; 
   }  
 
   //if the key changed, call the function
-  for (int i=0; i<NUM_KEYS; i++){
+  for (uint16_t i=0; i<sizeof(tempKeys); i++){
     if (tempKeys[i] != keys[i]) {
       if (keys[i] == 0) {
-         if (rawKeyPressedFunction) rawKeyPressedFunction(i+1);        
+         if (rawKeyPressedFunction) rawKeyPressedFunction(i);        
       }
       else if (keys[i] == 1) {
-        if (rawKeyReleasedFunction) rawKeyReleasedFunction(i+1);  
+        if (rawKeyReleasedFunction) rawKeyReleasedFunction(i);  
       }
     }
     keys[i] = tempKeys[i];
