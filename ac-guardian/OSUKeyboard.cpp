@@ -23,7 +23,7 @@
    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #include "OSUKeyboard.h"
-
+#include "keylayouts.h"
 
 
 void OSUKeyboard::init()
@@ -36,7 +36,10 @@ void OSUKeyboard::init()
 hidclaim_t OSUKeyboard::claim_collection(USBHIDParser *driver, Device_t *dev, uint32_t topusage)
 {
   // only claim RAWHID devices currently: 16c0:0486
+  //8808:660c - rotary knob
+  
   Serial.printf("OSUKeyboard Claim: %x:%x usage: %x", dev->idVendor, dev->idProduct, topusage);
+  if ((dev->idVendor == 0x8808) && (dev->idProduct == 0x660c)) Serial.println("\nRotary Knob found!");
   if (mydevice != NULL && dev != mydevice) {
     Serial.println("- NO (Device)");
     return CLAIM_NO;
@@ -82,8 +85,12 @@ void dump_hexbytes(const void *ptr, uint32_t len)
 bool OSUKeyboard::hid_process_in_data(const Transfer_t *transfer)
 {
 
-  //this code is specific for the Sayobot 5 key mechanical keyboard 
+  //this code is specific for the Sayobot mechanical keyboards (in different sizes, tested up to 16 key)
   //teensy doesn't see it as a keyboard, but the raw HID data is there
+
+  //uncomment this line for raw dump
+  dump_hexbytes(transfer->buffer, transfer->length);
+
   
   const uint8_t *p = (const uint8_t *)transfer->buffer;
 
@@ -95,13 +102,19 @@ bool OSUKeyboard::hid_process_in_data(const Transfer_t *transfer)
     tempKeys[i] = 0;
   }
 
+  //uint8_t alphaBase = 0x04;   //A
+  uint8_t alphaBase = KEY_A;
+  uint8_t numBase   = 0x1e;   //1
+  
   //look at data buffer to determine which key states
   for (int i=0; i<NUM_KEYS; i++){
     uint8_t k = *(p+i+3);   //the data packet keys start in 3 positions
 
-    uint8_t keybase = 0x1E;
-    for (int i=0; i<NUM_KEYS; i++){
-      if (k == keybase + i) tempKeys[i] = true;
+  
+    for (int i=0; i<NUM_KEYS; i++){ 
+      if (k == alphaBase + i) tempKeys[i+10] = true; 
+      else if (k == numBase + i) tempKeys[i] = true;
+      
     }
   }  
 

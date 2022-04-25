@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <USBHost_t36.h>
 
-#define NUM_KEYS 5
+#define NUM_KEYS 16
 
 class OSUKeyboard : public USBHIDInput {
 public:
