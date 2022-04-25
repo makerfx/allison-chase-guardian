@@ -8,8 +8,12 @@ void setup() {
   delay(200);
 
   //usb setup
+  //don't forget to add these for EVERY keyboard :)
+  
   osukey1.attachRawPress(OnPress);
   osukey1.attachRawRelease(OnRelease);
+  osukey2.attachRawPress(OnPress);
+  osukey2.attachRawRelease(OnRelease);
   myusb.begin();
   
   //display init
@@ -625,7 +629,7 @@ void printDebugOptions() {
 //usb keyboard button press
 void OnPress(uint8_t key)
 {
-  //Serial.print("Key Pressed:  "); Serial.println(key, HEX);
+  Serial.print("Key Pressed:  "); Serial.println(key, HEX);
 }
 
 //usb keyboard button release
@@ -637,7 +641,16 @@ void OnRelease(uint8_t key)
   else if (key==4) modeDestroyed();
   else if (key==5) volumeUp();
   else if (key==6) volumeDown();
-  //Serial.print("Key Released: "); Serial.println(key, HEX);
+  else if (key==0xE9) volumeUp();
+  else if (key==0xEA) volumeDown();
+  else if (key==0xCD) toggleMute();
+
+  
+  if (debugOptions[DEBUG_INPUT]) {
+    Serial.print("Key Released: "); 
+    Serial.println(key, HEX);
+  }
+  
 }
 
 void modePowerUp() {
@@ -695,6 +708,8 @@ void queueAction(uint8_t action, long time) {
 
 void toggleMute() {
   Serial.println("Mute!");
+  //todo: code here!
+  
 }
 
 /*

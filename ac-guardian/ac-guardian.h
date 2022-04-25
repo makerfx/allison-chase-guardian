@@ -88,11 +88,13 @@ USBHost myusb;
 USBHub hub1(myusb);
 
 USBHIDParser hid1(myusb);
+USBHIDParser hid2(myusb);
 
 OSUKeyboard osukey1(myusb);
+OSUKeyboard osukey2(myusb);
 
-USBDriver *drivers[] = {&hub1, &hid1};
-USBHIDInput *hiddrivers[] = {&osukey1};
+USBDriver *drivers[] = {&hub1, &hid1, &hid2};
+USBHIDInput *hiddrivers[] = {&osukey1, &osukey2};
 
 
 bool debugOptions[10] = {0, 1, 1, 1, 1, 1, 1, 0, 0, 0};   //change default here, helpful for startup debugging
@@ -121,7 +123,7 @@ const char *debugOptionsText[10] =  {"", "Input","Audio", "Action", "Eye Animati
 #define BODY_SPOT_LEN_MAX 30
 #define BODY_SPOT_GAP_LEN_MIN 5
 #define BODY_SPOT_GAP_LEN_MAX 7
-#define NUM_BODY_LEDS 300
+#define NUM_BODY_LEDS 350
 #define BODY_SPEED_MIN 200 //note that  speed is inverted
 #define BODY_SPEED_MAX 400
 #define BODY_SPEED_MAX_DECEL 100
