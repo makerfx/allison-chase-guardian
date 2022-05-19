@@ -47,8 +47,9 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=271.00390625,256.99999809265137
 #define LEVEL_CHANNEL1    .5
 #define LEVEL_CHANNEL2    .5 
 
-#define STARTING_VOLUME       .8 //change this to reduce clipping in the main amp
-#define MAX_VOLUME            1.0 
+#define STARTING_VOLUME       1.0 //change this to reduce clipping in the main amp
+#define MAX_VOLUME            1.5
+ 
 #define MIN_VOLUME            .2 
 #define VOLUME_INCREMENT      .1 //how much the volume changes when using buttons
 
@@ -58,22 +59,27 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=271.00390625,256.99999809265137
 AudioPlaySdWav *channels[NUM_CHANNELS] = { &playSdWav1, &playSdWav2, &playSdWav3 };
 String playQueue[NUM_CHANNELS];
 
-#define NUM_ACTIONS 6
+#define NUM_ACTIONS 9
 
 #define ACTION_FADE_OUT_EYE        0
-#define ACTION_FADE_OUT_NECK       1
-#define ACTION_FADE_OUT_BODY       2
-#define ACTION_PLAY_LASER_SOUND    3
-#define ACTION_SET_MODE_OFF        4
-#define ACTION_SET_MODE_IDLE       5
+#define ACTION_FADE_IN_EYE         1
+#define ACTION_FADE_OUT_NECK       2
+#define ACTION_FADE_IN_NECK        3
+#define ACTION_FADE_OUT_BODY       4
+#define ACTION_FADE_IN_BODY        5
+
+#define ACTION_PLAY_LASER_SOUND    6
+#define ACTION_SET_MODE_OFF        7
+#define ACTION_SET_MODE_IDLE       8
 
 
 unsigned long actionQueue[NUM_ACTIONS];
-const char *actionsText[NUM_ACTIONS]={"Fade Out Eye", "Fade Out Neck", "Fade Out Body", "Play Laser Sound", "Set Mode Off", "Set Mode Idle" }; 
+const char *actionsText[NUM_ACTIONS]={"Fade Out Eye", "Fade In Eye", "Fade Out Neck", "Fade In Neck", "Fade Out Body", "Fade In Body", "Play Laser Sound", "Set Mode Off", "Set Mode Idle" }; 
 
 
 float mainVolume = STARTING_VOLUME;
 bool musicLoop = 0;
+String musicLoopFilename;
 bool firstLoop = 1;
 
 // Use these with the Teensy 3.5 & 3.6 SD card
@@ -86,15 +92,24 @@ bool firstLoop = 1;
  */
 USBHost myusb;
 USBHub hub1(myusb);
+USBHub hub2(myusb);
 
 USBHIDParser hid1(myusb);
 USBHIDParser hid2(myusb);
+USBHIDParser hid3(myusb);
+USBHIDParser hid4(myusb);
+USBHIDParser hid5(myusb);
+
 
 OSUKeyboard osukey1(myusb);
 OSUKeyboard osukey2(myusb);
+OSUKeyboard osukey3(myusb);
+OSUKeyboard osukey4(myusb);
+OSUKeyboard osukey5(myusb);
 
-USBDriver *drivers[] = {&hub1, &hid1, &hid2};
-USBHIDInput *hiddrivers[] = {&osukey1, &osukey2};
+
+//USBDriver *drivers[] = {&hub1, &hid1, &hid2};
+//USBHIDInput *hiddrivers[] = {&osukey1, &osukey2};
 
 
 bool debugOptions[10] = {0, 1, 1, 1, 1, 1, 1, 0, 0, 0};   //change default here, helpful for startup debugging
@@ -150,6 +165,14 @@ CRGB bodySpotGapColor = CRGB(255,105-32,180-32); //American Girl Pink
 //EXCESS CURRENT DRAW AND POSSIBLE SYSTEM DAMAGE
 #define DEFAULT_BRIGHTNESS 64 //WARNING!!!!!!!!!
 //DON'T DO IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+uint8_t globalBrightness = DEFAULT_BRIGHTNESS;
+
+
+#define MAX_BRIGHTNESS         64
+ 
+#define MIN_BRIGHTNESS         16
+#define BRIGHTNESS_INCREMENT   8 //how much the brightness changes when using buttons
 
 /*
  * neck
@@ -246,16 +269,20 @@ uint8_t eyeAniMode = 0;
 uint8_t neckAniMode = 0;
 uint8_t bodyAniMode = 0;
 
-#define NUM_MODES 6
+#define NUM_MODES 9
 
 #define MODE_OFF        0
-#define MODE_POWER_UP   1
+#define MODE_POWER_UP   1 //power up function won't run if mode is between 1 and 4
 #define MODE_IDLE       2
 #define MODE_ATTACK     3
-#define MODE_DAMAGED    4
+#define MODE_DAMAGED    4 
 #define MODE_DESTROYED  5
+#define MODE_THE_CHAIN  6
+#define MODE_VADER      7
+#define MODE_LOWRIDER   8
 
-const char *modeText[NUM_MODES]={"OFF", "POWER UP", "IDLE" ,"ATTACK", "DAMAGED", "DESTROYED"}; 
+
+const char *modeText[NUM_MODES]={"OFF", "POWER UP", "IDLE" ,"ATTACK", "DAMAGED", "DESTROYED", "THE_CHAIN", "VADER", "LOWRIDER"}; 
 uint8_t mode = 0;
 
 int eyeTargetAniFrame = 0;

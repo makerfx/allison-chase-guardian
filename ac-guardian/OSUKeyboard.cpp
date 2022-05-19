@@ -37,6 +37,7 @@ hidclaim_t OSUKeyboard::claim_collection(USBHIDParser *driver, Device_t *dev, ui
 {
   // only claim RAWHID devices currently: 16c0:0486
   //8808:660c - rotary knob
+  //8089:6 - 16 key keyboard 4x4
   
   Serial.printf("OSUKeyboard Claim: %x:%x usage: %x", dev->idVendor, dev->idProduct, topusage);
   if ((dev->idVendor == 0x8808) && (dev->idProduct == 0x660c)) Serial.println("\nRotary Knob found!");

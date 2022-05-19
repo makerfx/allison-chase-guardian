@@ -14,6 +14,12 @@ void setup() {
   osukey1.attachRawRelease(OnRelease);
   osukey2.attachRawPress(OnPress);
   osukey2.attachRawRelease(OnRelease);
+  osukey3.attachRawRelease(OnRelease);
+  osukey3.attachRawPress(OnPress);
+  osukey4.attachRawRelease(OnRelease);
+  osukey4.attachRawPress(OnPress);
+  osukey5.attachRawRelease(OnRelease);
+  osukey5.attachRawPress(OnPress);
   myusb.begin();
   
   //display init
@@ -66,9 +72,12 @@ void setup() {
   LEDS.addLeds<WS2812SERIAL,  NECK_DATA_PIN,   BRG>(neckLEDs,  NUM_NECK_LEDS);
   LEDS.addLeds<WS2812SERIAL,  EYE_DATA_PIN,    BRG>(eyeLEDs,   NUM_EYE_LEDS);
   LEDS.addLeds<WS2812SERIAL,  BODY_DATA_PIN,   BRG>(bodyLEDs,  NUM_BODY_LEDS);
+  LEDS.addLeds<WS2812SERIAL,  BODY_DATA_PIN,   BRG>(bodyLEDs,  NUM_BODY_LEDS);
+  
     
-  LEDS.setBrightness(DEFAULT_BRIGHTNESS);
-
+  //LEDS.setBrightness(DEFAULT_BRIGHTNESS);
+  updateBrightness(); //will set the default
+  
   //build the top ring pattern to be copied later
   for (int i=0; i<NECK_TOP_GEARS_NUM; i++) { 
      for (int j=0; j<NECK_TOP_GEAR_WIDTH; j++) {
@@ -97,6 +106,7 @@ void setup() {
   display.display(); // actually display all of the above
   printDebugOptions();
 
+/*
   Serial.println(bodySpotColor.red);
   Serial.println(bodySpotColor.green);
   Serial.println(bodySpotColor.blue);
@@ -105,8 +115,8 @@ void setup() {
   Serial.println(bodySpotGapColor.red);
   Serial.println(bodySpotGapColor.green);
   Serial.println(bodySpotGapColor.blue);
+ */
   
-
   //modePowerUp();
 }
 
@@ -118,7 +128,7 @@ void loop() {
   
   EVERY_N_MILLISECONDS(100) {                           
     updateOLED();
-    FastLED.show();
+    //FastLED.show();
     debugOptionsCheck();
   }
    
@@ -129,9 +139,13 @@ void loop() {
       if (qTime && (millis() > qTime)) {
         if (debugOptions[DEBUG_ACTION]) Serial.printf ("Action Called: %s \n", actionsText[q]);
         if (q==ACTION_FADE_OUT_EYE) eyeAniMode = 0;
+        else if (q==ACTION_FADE_IN_EYE) eyeAniMode = 1;       
         else if (q==ACTION_FADE_OUT_NECK) neckAniMode = 0;
+        else if (q==ACTION_FADE_IN_NECK) neckAniMode = 1;
         else if (q==ACTION_FADE_OUT_BODY) bodyAniMode = 0;
-        else if (q==ACTION_PLAY_LASER_SOUND) playWAV(CHANNEL_SFX1, "ACGLAZR1.WAV");
+        else if (q==ACTION_FADE_IN_BODY) bodyAniMode = 1;
+        else if (q==ACTION_PLAY_LASER_SOUND) playWAV(CHANNEL_SFX1, "ACGLAZR1.WAV"); //todo: something with the body lights?
+        
         else if (q==ACTION_SET_MODE_OFF) mode = MODE_OFF;
         else if (q==ACTION_SET_MODE_IDLE) mode = MODE_IDLE;
         
@@ -152,10 +166,11 @@ void loop() {
       }
     }
 
-    //loop BGM if needed
+    //loop BGM if needed - todo: have global for filename to loop
     if ( !block && (musicLoop==true) && !(channels[CHANNEL_MUSIC]->isPlaying())) {
       if(debugOptions[DEBUG_AUDIO]) Serial.println("Audio: restarting music loop");
-      playWAV(CHANNEL_MUSIC, "ACGBATL2.WAV");
+      //playWAV(CHANNEL_MUSIC, "ACGBATL2.WAV");
+      playWAV(CHANNEL_MUSIC, musicLoopFilename);
       if (mode == MODE_POWER_UP) mode = MODE_IDLE;
     }
   } //end playQueueMetro check
@@ -574,16 +589,22 @@ void debugOptionsCheck() {
             printDebugOptions();
             break;
    
-          case 'q': OnRelease(1); break;
-          case 'w': OnRelease(2); break;
-          case 'e': OnRelease(3); break;
-          case 'r': OnRelease(4); break;
-          case 't': OnRelease(5); break;
-          case 'y': OnRelease(6); break;
-          case ',': bodySpotColor+= CRGB(0,10,10); printDebugColor("Body Spot",bodySpotColor); generateBodyPattern(); break;
-          case '.': bodySpotColor-= CRGB(0,10,10); printDebugColor("Body Spot",bodySpotColor); generateBodyPattern(); break;
-          case '<': bodySpotGapColor-= CRGB(10,0,0); printDebugColor("Body Gap",bodySpotGapColor); generateBodyPattern(); break;
-          case '>': bodySpotGapColor+= CRGB(10,0,0); printDebugColor("Body Gap",bodySpotGapColor); generateBodyPattern(); break;
+          case 'q': modePowerUp(); break;
+          case 'w': modeAttack(); break;
+          case 'e': modeDamaged(); break;
+          case 'r': modeDestroyed(); break;
+          case 't': volumeUp(); break;
+          case 'y': volumeDown(); break;
+          case 'c': modeTheChain(); break;
+          case 'v': modeVader(); break;
+          case 'l': modeLowRider(); break;
+          
+          case '<': brightnessDown(); break;
+          case '>': brightnessUp(); break;
+         // case ',': bodySpotColor+= CRGB(0,10,10); printDebugColor("Body Spot",bodySpotColor); generateBodyPattern(); break;
+         // case '.': bodySpotColor-= CRGB(0,10,10); printDebugColor("Body Spot",bodySpotColor); generateBodyPattern(); break;
+         // case '<': bodySpotGapColor-= CRGB(10,0,0); printDebugColor("Body Gap",bodySpotGapColor); generateBodyPattern(); break;
+         // case '>': bodySpotGapColor+= CRGB(10,0,0); printDebugColor("Body Gap",bodySpotGapColor); generateBodyPattern(); break;
           
           
           }
@@ -635,12 +656,12 @@ void OnPress(uint8_t key)
 //usb keyboard button release
 void OnRelease(uint8_t key)
 {
-  if (key==1) modePowerUp();
-  else if (key==2) modeAttack();
-  else if (key==3) modeDamaged();
-  else if (key==4) modeDestroyed();
-  else if (key==5) volumeUp();
-  else if (key==6) volumeDown();
+  if (key==0x1E) modePowerUp();
+  else if (key==0x1F) modeAttack();
+  else if (key==0x20) modeDamaged();
+  else if (key==0x21) modeDestroyed();
+  else if (key==0x6) volumeUp();
+  else if (key==0x7) volumeDown();
   else if (key==0xE9) volumeUp();
   else if (key==0xEA) volumeDown();
   else if (key==0xCD) toggleMute();
@@ -654,17 +675,25 @@ void OnRelease(uint8_t key)
 }
 
 void modePowerUp() {
-  if (mode!=MODE_OFF) return;
+  if (mode > 0 && mode < 5) return;
   mode=MODE_POWER_UP;
   clearActions();
   musicLoop=true;
   //firstLoop=true;
   queueWAV(CHANNEL_SFX1, "ACGBOOT.WAV");
   queueWAV(CHANNEL_MUSIC, "ACGBATL1.WAV");
+  musicLoopFilename = "ACGBATL2.WAV";
+
+  queueAction(ACTION_FADE_IN_NECK, 50);
+  queueAction(ACTION_FADE_IN_BODY, 2000);
+  queueAction(ACTION_FADE_IN_EYE,  3000);
+  
+ 
+   /*
   eyeAniMode = 1;
   neckAniMode = 1;    //todo queue these to come up over time?
   bodyAniMode = 1;
-  
+  */
 }
 
 void modeAttack() {
@@ -694,11 +723,37 @@ void modeDestroyed() {
   musicLoop = false;
   queueWAV(CHANNEL_MUSIC, "ACGBATL3.WAV");
   queueAction(ACTION_FADE_OUT_EYE,  4000);
-  queueAction(ACTION_FADE_OUT_NECK, 3000);
-  queueAction(ACTION_FADE_OUT_BODY, 5000);
+  queueAction(ACTION_FADE_OUT_NECK, 2000);
+  queueAction(ACTION_FADE_OUT_BODY, 3000);
   queueAction(ACTION_SET_MODE_OFF,  6000);  
 }
 
+void modeTheChain() {
+  clearActions();
+  musicLoop = true;
+  musicLoopFilename = "CHAIN.WAV";
+  mode=MODE_THE_CHAIN;
+  Serial.println("The Chain!");
+  queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+}
+
+void modeVader() {
+  clearActions();
+  musicLoop = true;
+  musicLoopFilename = "VADER.WAV";
+  mode=MODE_VADER;
+  Serial.println("Vader!");
+  queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+}
+
+void modeLowRider() {
+  clearActions();
+  musicLoop = true;
+  musicLoopFilename = "LOWRIDER.WAV";
+  mode=MODE_LOWRIDER;
+  Serial.println("Low Rider!");
+  queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+}
 void queueAction(uint8_t action, long time) {
   if (debugOptions[DEBUG_ACTION]) Serial.printf("Queuing action: %s for %d ms\n", actionsText[action], time);
   actionQueue[action]= millis() + time;
@@ -780,6 +835,43 @@ void updateVolume() {
     Serial.print("System volume now: ");
     Serial.println(mainVolume);
   }
+  
+}
+
+/*
+ * brightnessUp() - increase global brightness
+ * 
+ */
+void brightnessUp() 
+{
+  globalBrightness += BRIGHTNESS_INCREMENT;
+  updateBrightness();
+}
+
+/*
+ * brightnessDown() - decrease global brightness
+ * 
+ */
+void brightnessDown() 
+{
+  globalBrightness -= BRIGHTNESS_INCREMENT;
+  updateBrightness();
+}
+
+/*
+ * updateBrightness() -  checks min / max vol brightness updates the global brightness
+ *  
+ */
+void updateBrightness() {
+
+  if (globalBrightness < MIN_BRIGHTNESS) globalBrightness = MIN_BRIGHTNESS;
+  else if (globalBrightness > MAX_BRIGHTNESS) globalBrightness = MAX_BRIGHTNESS;
+ 
+  LEDS.setBrightness(globalBrightness);
+  //  if (debugOptions[DEBUG_AUDIO]) {
+    Serial.print("Global brightness now: ");
+    Serial.println(globalBrightness);
+  //}
   
 }
 
