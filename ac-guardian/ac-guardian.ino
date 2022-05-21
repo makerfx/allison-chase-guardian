@@ -1,6 +1,5 @@
 #include "ac-guardian.h"
 
-
 void setup() {
   // put your setup code here, to run once:
   randomSeed(analogRead(0));
@@ -72,7 +71,6 @@ void setup() {
   LEDS.addLeds<WS2812SERIAL,  NECK_DATA_PIN,   BRG>(neckLEDs,  NUM_NECK_LEDS);
   LEDS.addLeds<WS2812SERIAL,  EYE_DATA_PIN,    BRG>(eyeLEDs,   NUM_EYE_LEDS);
   LEDS.addLeds<WS2812SERIAL,  BODY_DATA_PIN,   BRG>(bodyLEDs,  NUM_BODY_LEDS);
-  LEDS.addLeds<WS2812SERIAL,  BODY_DATA_PIN,   BRG>(bodyLEDs,  NUM_BODY_LEDS);
   
     
   //LEDS.setBrightness(DEFAULT_BRIGHTNESS);
@@ -124,6 +122,7 @@ void loop() {
 
   EVERY_N_MILLISECONDS(10) {                           
     FastLED.show();
+    gHue++; 
   }
   
   EVERY_N_MILLISECONDS(100) {                           
@@ -297,6 +296,10 @@ void updateBodyLEDs() {
             bodyLEDs[i] = bodyPattern[lo];
         }  
 
+    }
+    else if (bodyAniMode == 2) {//rainbow!!
+      //rainbowHue=rainbowHue+10;
+      fill_rainbow( bodyLEDs, NUM_BODY_LEDS, gHue, 7);
     }
 /*
   //copy the pattern to the LEDs
@@ -494,7 +497,7 @@ void updateEyeTargeting() {
   uint8_t lastLED = -1;
   
   for (int r=0; r<NUM_RINGS; r++) {
-    Serial.print(r);
+    //Serial.print(r);
 
     uint8_t firstLED = 0;
     
@@ -596,8 +599,10 @@ void debugOptionsCheck() {
           case 't': volumeUp(); break;
           case 'y': volumeDown(); break;
           case 'c': modeTheChain(); break;
-          case 'v': modeVader(); break;
+          case 'd': modeVader(); break;
           case 'l': modeLowRider(); break;
+          case 'h': modeDrWho(); break;
+          
           
           case '<': brightnessDown(); break;
           case '>': brightnessUp(); break;
@@ -657,14 +662,22 @@ void OnPress(uint8_t key)
 void OnRelease(uint8_t key)
 {
   if (key==0x1E) modePowerUp();
-  else if (key==0x1F) modeAttack();
-  else if (key==0x20) modeDamaged();
-  else if (key==0x21) modeDestroyed();
+  else if (key==0x1F && mode==MODE_IDLE) modeAttack();
+  else if (key==0x1F && (mode==MODE_OFF || mode == MODE_LOWRIDER)) modeLowRider();
+  
+  else if (key==0x20 && mode==MODE_IDLE) modeDamaged();
+  else if (key==0x20 && (mode==MODE_OFF || mode == MODE_DRWHO)) modeDrWho();
+  
+  else if (key==0x21 && mode==MODE_IDLE) modeDestroyed();
+  else if (key==0x21 && (mode==MODE_OFF || mode == MODE_VADER)) modeVader();
+  
+  else if (key==0x22) modeTheChain();
   else if (key==0x6) volumeUp();
   else if (key==0x7) volumeDown();
   else if (key==0xE9) volumeUp();
   else if (key==0xEA) volumeDown();
   else if (key==0xCD) toggleMute();
+  
 
   
   if (debugOptions[DEBUG_INPUT]) {
@@ -729,30 +742,97 @@ void modeDestroyed() {
 }
 
 void modeTheChain() {
-  clearActions();
-  musicLoop = true;
-  musicLoopFilename = "CHAIN.WAV";
-  mode=MODE_THE_CHAIN;
-  Serial.println("The Chain!");
-  queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+ 
+  if (mode==MODE_THE_CHAIN) {
+    //stop playback
+    Serial.println("Break The Chain!");
+    musicLoop = false;
+    channels[CHANNEL_MUSIC]->stop();
+    mode=MODE_OFF;
+    neckAniMode = 0;
+    bodyAniMode = 0;
+    eyeAniMode = 0;
+  }
+  else {
+    clearActions();
+    musicLoop = true;
+    musicLoopFilename = "CHAIN.WAV";
+    mode=MODE_THE_CHAIN;
+    Serial.println("The Chain!");
+    neckAniMode = 1;
+    eyeAniMode = 1;
+    bodyAniMode = 2;
+    queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+  }
 }
 
 void modeVader() {
-  clearActions();
-  musicLoop = true;
-  musicLoopFilename = "VADER.WAV";
-  mode=MODE_VADER;
-  Serial.println("Vader!");
-  queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+   if (mode==MODE_VADER) {
+    //stop playback
+    Serial.println("Use the Force Luke!");
+    musicLoop = false;
+    channels[CHANNEL_MUSIC]->stop();
+    mode=MODE_OFF;
+    neckAniMode = 0;
+    bodyAniMode = 0;
+    eyeAniMode = 0;
+  }
+  else {
+    clearActions();
+  
+    musicLoop = true;
+    musicLoopFilename = "VADER.WAV";
+    mode=MODE_VADER;
+    Serial.println("Vader!");
+    queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+  }
+}
+
+void modeDrWho() {
+   if (mode==MODE_DRWHO) {
+    //stop playback
+    Serial.println("Bye Bye Dalek!");
+    musicLoop = false;
+    channels[CHANNEL_MUSIC]->stop();
+    mode=MODE_OFF;
+    neckAniMode = 0;
+    bodyAniMode = 0;
+    eyeAniMode = 0;
+  }
+  else {
+    clearActions();
+  
+    musicLoop = true;
+    musicLoopFilename = "DRWHO.WAV";
+    mode=MODE_DRWHO;
+    Serial.println("Exterminate!");
+    queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+  }
 }
 
 void modeLowRider() {
-  clearActions();
-  musicLoop = true;
-  musicLoopFilename = "LOWRIDER.WAV";
-  mode=MODE_LOWRIDER;
-  Serial.println("Low Rider!");
-  queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+   if (mode==MODE_LOWRIDER) {
+    //stop playback
+    Serial.println("Stop the ride!");
+    musicLoop = false;
+    channels[CHANNEL_MUSIC]->stop();
+    mode=MODE_OFF;
+    neckAniMode = 0;
+    bodyAniMode = 0;
+    eyeAniMode = 0;
+  }
+  
+  else {
+    clearActions();
+    musicLoop = true;
+    musicLoopFilename = "LOWRIDER.WAV";
+    mode=MODE_LOWRIDER;
+    Serial.println("Low Rider!");
+    neckAniMode = 0;
+    eyeAniMode = 0; //no leds for lowrider
+    bodyAniMode = 0;
+    queueWAV(CHANNEL_MUSIC, musicLoopFilename);
+  }
 }
 void queueAction(uint8_t action, long time) {
   if (debugOptions[DEBUG_ACTION]) Serial.printf("Queuing action: %s for %d ms\n", actionsText[action], time);

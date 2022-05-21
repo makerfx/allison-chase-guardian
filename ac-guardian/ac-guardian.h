@@ -107,7 +107,6 @@ OSUKeyboard osukey3(myusb);
 OSUKeyboard osukey4(myusb);
 OSUKeyboard osukey5(myusb);
 
-
 //USBDriver *drivers[] = {&hub1, &hid1, &hid2};
 //USBHIDInput *hiddrivers[] = {&osukey1, &osukey2};
 
@@ -160,6 +159,7 @@ CRGB bodySpotColor = CRGB(255,20,70); //Hot topic pink per Allison
 //CRGB bodySpotGapColor = CRGB(255,105,180);
 CRGB bodySpotGapColor = CRGB(255,105-32,180-32); //American Girl Pink
 
+uint8_t gHue = 128;
 
 //WARNING - ADJUSTING THIS SETTING COULD LEAD TO 
 //EXCESS CURRENT DRAW AND POSSIBLE SYSTEM DAMAGE
@@ -269,7 +269,7 @@ uint8_t eyeAniMode = 0;
 uint8_t neckAniMode = 0;
 uint8_t bodyAniMode = 0;
 
-#define NUM_MODES 9
+#define NUM_MODES 10
 
 #define MODE_OFF        0
 #define MODE_POWER_UP   1 //power up function won't run if mode is between 1 and 4
@@ -280,9 +280,12 @@ uint8_t bodyAniMode = 0;
 #define MODE_THE_CHAIN  6
 #define MODE_VADER      7
 #define MODE_LOWRIDER   8
+#define MODE_DRWHO      9
 
 
-const char *modeText[NUM_MODES]={"OFF", "POWER UP", "IDLE" ,"ATTACK", "DAMAGED", "DESTROYED", "THE_CHAIN", "VADER", "LOWRIDER"}; 
+
+
+const char *modeText[NUM_MODES]={"OFF", "POWER UP", "IDLE" ,"ATTACK", "DAMAGED", "DESTROYED", "THE_CHAIN", "VADER", "LOWRIDER", "DRWHO"}; 
 uint8_t mode = 0;
 
 int eyeTargetAniFrame = 0;
