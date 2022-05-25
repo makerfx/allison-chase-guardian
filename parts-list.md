@@ -26,13 +26,13 @@ Power
 Cable Management
 - Ceiling Cable Management System for VR ($20.79) [Amazon Link](https://www.amazon.com/gp/product/B0777H24ZG)
 
-LEDs (>4000!)
-- Eye + Body Circles: 241 LED Concentric Rings($29) [Amazon Link](https://smile.amazon.com/gp/product/B083VWVP3J) x3 = 723 LEDs
-- Ears: WS2812 5.5mm Narrow White PCB 2m 120 LEDs [Amazon link](https://smile.amazon.com/gp/product/B08SBWCVGX) x6 = 720 LEDs
-- Body: WS2812 White PCB 5m 300 LEDs [Amazon Link](https://smile.amazon.com/gp/product/B01CDTEH3Q/) x6 = 1800 LEDs
-- Neck: WS2812 Black PCB 5m 300 LEDs [Amazon Link](https://smile.amazon.com/gp/product/B01CDTEKAG) x3 = 900 LEDs
-- Male/Female LED connector: https://smile.amazon.com/dp/B00NBSH4CA/
-- LED Extension Cable: 3 pin 18 gauge 10m () x2 ($12.49 each)[Amazon Link](https://www.amazon.com/gp/product/B07SKGTCWQ)
+LEDs (>3500!)
+- Eye + Body Circles: 241 LED Concentric Rings($29) [Amazon Link](https://smile.amazon.com/gp/product/B083VWVP3J)= 177 LEDs (we did not use the outer ring)
+- Ears: WS2812 5.5mm Narrow White PCB 2m 120 LEDs ($18.49 each) [Amazon link](https://smile.amazon.com/gp/product/B08SBWCVGX) x6 = 720 LEDs
+- Body: WS2812 White PCB 5m 300 LEDs ($33.49 each) [Amazon Link](https://smile.amazon.com/gp/product/B01CDTEH3Q/) x6 = 1800 LEDs
+- Neck: WS2812 Black PCB 5m 300 LEDs ($33.49 each) [Amazon Link](https://smile.amazon.com/gp/product/B01CDTEKAG) x3 = 900 LEDs
+- Male/Female LED connector ($10.99) [Amazon Link](https://smile.amazon.com/dp/B00NBSH4CA/)
+- LED Extension Cable: 3 pin 18 gauge 10m () x2 ($12.49 each) [Amazon Link](https://www.amazon.com/gp/product/B07SKGTCWQ)
 - LED Data cable 18 gauge green 100ft ($13.22) [Amazon Link](https://www.amazon.com/gp/product/B00J31QVDC)
 
 Camera System
@@ -40,9 +40,12 @@ Camera System
 - Sandisk 128GB MicroSD card ($17.99) [Amazon Link](https://www.amazon.com/gp/product/B08GYKNCCP)
 
 Audio
- - Amplified Speakers ($99.99) [Best Buy Link](TBD)
+ - Amplified Speakers ($99.99) [Best Buy Link](https://www.bestbuy.com/site/boss-audio-systems-mcbc425ba-black-chrome/)
  - PAC Noise Filter ($11.49) [Amazon Link](https://www.amazon.com/gp/product/B01LXGH3KC/ref)
  - Headphone Extension Cable 15 feet [Amazon Link](https://www.amazon.com/gp/product/B091KK5HGG)
+
+Cooling Fan
+ - 12v fan pulled from an old computer power supply at MakerFX
 
 Other Misc Supplies
 - LOTS of crimp on rings from Skycraft Surplus
