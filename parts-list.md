@@ -49,4 +49,5 @@
  - 12v fan pulled from an old computer power supply at MakerFX
 
 ## Other Misc Supplies
+- 16mm Thread Male Female Panel Metal Aviation Connector Plug - 2x 4pin & 2x 5pin  ($19.93 for assortment) [Amazon Link](https://www.amazon.com/gp/product/B07F5B5LLX)
 - LOTS of crimp on rings from Skycraft Surplus
