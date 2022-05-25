@@ -1,13 +1,15 @@
-Controller
+Controller & Interface
 - Magic Wheelchair "Motherboard" v1.0.7 from MakerFX / 2-Pi Labs
   - 12v -> 5v LM2596 Power Regulator ($1.25) [Amazon Link](https://www.amazon.com/gp/product/B07RLR8PBF)
   - Teensy 4.1 ($26.85): [PJRC link - Buy direct!](https://www.pjrc.com/store/teensy41.html) (also available on amazon)
-  - USB Host Cable for Teensy ($8 for 2): https://www.amazon.com/gp/product/B06Y5M6JTV
   - Teensy Audio board REV D for Teensy 4 ($13.75): [PJRC link - Buy direct!](https://www.pjrc.com/store/teensy3_audio.html)
   - Header pins for protoboards ($13 kit): https://smile.amazon.com/gp/product/B07CWSXY7P/
-  - SD Card - SanDisk Industrial with reader ($13.43) [Amazon Link](https://www.amazon.com/gp/product/B085GL8XBH)
+  - 8GB Micro SD Card - SanDisk Industrial with reader ($13.43) [Amazon Link](https://www.amazon.com/gp/product/B085GL8XBH)
+  - USB Host Cable for Teensy ($8 for 2): https://www.amazon.com/gp/product/B06Y5M6JTV
   - 5 Key OSU Keyboard ($24.99): [Amazon Link](https://www.amazon.com/gp/product/B08R9GN82G/?th=1)
   - Wireless Presenter Remote ($14.59): [Amazon Link](https://www.amazon.com/gp/product/B01410YNAM/) (STILL NOT INTEGRATED)
+  - OLED screen .91 inch ($12.99): [Amazon Link](https://www.amazon.com/gp/product/B07PDFCVXL)
+
 
 Power
 - Batteries - GigaParts PO4Power 12V 24AH LifePO4 Battery x4 (two on-board, two reserve) ($199.99 each)
@@ -33,6 +35,9 @@ LEDs (>4000!)
 - LED Extension Cable: 3 pin 18 gauge 10m () x2 ($12.49 each)[Amazon Link](https://www.amazon.com/gp/product/B07SKGTCWQ)
 - LED Data cable 18 gauge green 100ft ($13.22) [Amazon Link](https://www.amazon.com/gp/product/B00J31QVDC)
 
+Camera System
+- Automotive Dashcam System ($105.00) [Amazon Link](https://www.amazon.com/gp/product/B0824M6YKF)
+- Sandisk 128GB MicroSD card ($17.99) [Amazon Link](https://www.amazon.com/gp/product/B08GYKNCCP)
 
 Audio
  - Amplified Speakers ($99.99) [Best Buy Link](TBD)
