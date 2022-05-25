@@ -1,4 +1,6 @@
-Controller & Interface
+# Allison Chase Decayed Guardian Parts List
+
+## Controller & Interface
 - Magic Wheelchair "Motherboard" v1.0.7 from MakerFX / 2-Pi Labs
   - 12v -> 5v LM2596 Power Regulator ($1.25) [Amazon Link](https://www.amazon.com/gp/product/B07RLR8PBF)
   - Teensy 4.1 ($26.85): [PJRC link - Buy direct!](https://www.pjrc.com/store/teensy41.html) (also available on amazon)
@@ -10,8 +12,7 @@ Controller & Interface
   - Wireless Presenter Remote ($14.59): [Amazon Link](https://www.amazon.com/gp/product/B01410YNAM/) (STILL NOT INTEGRATED)
   - OLED screen .91 inch ($12.99): [Amazon Link](https://www.amazon.com/gp/product/B07PDFCVXL)
 
-
-Power
+## Power
 - Batteries - GigaParts PO4Power 12V 24AH LifePO4 Battery x4 (two on-board, two reserve) ($199.99 each)
 - Battery Mount - 3D Printed from DeltaMaker - STL file in Repo
 - Battery Straps ($6.99) - [Amazon Link](https://www.amazon.com/gp/product/B078P3GMWV)
@@ -23,10 +24,10 @@ Power
 - Main Battery Cable - 10 gauge stranded speaker wire 100 ft ($39.95) [Amazon Link](https://www.amazon.com/gp/product/B00J357DGW)
 - Power Distribution Cable - 16 gauge 2 conductor 100 ft. ($18.99) [Amazon Link](https://www.amazon.com/gp/product/B07SG23DT1)
 
-Cable Management
+## Cable Management
 - Ceiling Cable Management System for VR ($20.79) [Amazon Link](https://www.amazon.com/gp/product/B0777H24ZG)
 
-LEDs (>3500!)
+## LEDs (>3500!)
 - Eye + Body Circles: 241 LED Concentric Rings($29) [Amazon Link](https://smile.amazon.com/gp/product/B083VWVP3J)= 177 LEDs (we did not use the outer ring)
 - Ears: WS2812 5.5mm Narrow White PCB 2m 120 LEDs ($18.49 each) [Amazon link](https://smile.amazon.com/gp/product/B08SBWCVGX) x6 = 720 LEDs
 - Body: WS2812 White PCB 5m 300 LEDs ($33.49 each) [Amazon Link](https://smile.amazon.com/gp/product/B01CDTEH3Q/) x6 = 1800 LEDs
@@ -35,17 +36,17 @@ LEDs (>3500!)
 - LED Extension Cable: 3 pin 18 gauge 10m () x2 ($12.49 each) [Amazon Link](https://www.amazon.com/gp/product/B07SKGTCWQ)
 - LED Data cable 18 gauge green 100ft ($13.22) [Amazon Link](https://www.amazon.com/gp/product/B00J31QVDC)
 
-Camera System
+## Camera System
 - Automotive Dashcam System ($105.00) [Amazon Link](https://www.amazon.com/gp/product/B0824M6YKF)
 - Sandisk 128GB MicroSD card ($17.99) [Amazon Link](https://www.amazon.com/gp/product/B08GYKNCCP)
 
-Audio
+## Audio
  - Amplified Speakers ($99.99) [Best Buy Link](https://www.bestbuy.com/site/boss-audio-systems-mcbc425ba-black-chrome/)
  - PAC Noise Filter ($11.49) [Amazon Link](https://www.amazon.com/gp/product/B01LXGH3KC/ref)
  - Headphone Extension Cable 15 feet [Amazon Link](https://www.amazon.com/gp/product/B091KK5HGG)
 
-Cooling Fan
+## Cooling Fan
  - 12v fan pulled from an old computer power supply at MakerFX
 
-Other Misc Supplies
+## Other Misc Supplies
 - LOTS of crimp on rings from Skycraft Surplus
